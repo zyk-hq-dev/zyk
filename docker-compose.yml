@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hatchet
+      POSTGRES_PASSWORD: hatchet
+      POSTGRES_DB: hatchet
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hatchet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  hatchet-engine:
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"   # Hatchet REST API
+      - "8081:8081"   # Hatchet internal
+      - "8888:8888"   # Hatchet web UI
+      - "7077:7077"   # gRPC worker connections
+    environment:
+      DATABASE_URL: postgresql://hatchet:hatchet@postgres:5432/hatchet
+      SERVER_AUTH_COOKIE_SECRETS: "supersecretcookiekey1234 anothersecretkey56789012"
+      SERVER_AUTH_COOKIE_DOMAIN: localhost
+      SERVER_GRPC_BIND_ADDRESS: "0.0.0.0"
+      SERVER_GRPC_PORT: "7077"
+      # Locally: workers connect via localhost. On Railway: set to
+      # hatchet-engine.railway.internal:7077 via the HATCHET_GRPC_BROADCAST_ADDRESS env var.
+      SERVER_GRPC_BROADCAST_ADDRESS: "${HATCHET_GRPC_BROADCAST_ADDRESS:-localhost:7077}"
+      SERVER_GRPC_INSECURE: "t"
+      SERVER_AUTH_SET_EMAIL_VERIFIED: "t"
+      SERVER_AUTH_COOKIE_INSECURE: "t"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  zyk-mcp:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    environment:
+      HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
+      HATCHET_HOST_PORT: hatchet-engine:7077
+      HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
+      # Optional: pass user secrets for workflows
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      - ./mcp-server/workflows:/app/workflows
+    depends_on:
+      hatchet-engine:
+        condition: service_healthy
+
+  zyk-playground:
+    build:
+      context: ./playground
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
+      HATCHET_HOST_PORT: hatchet-engine:7077
+      HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
+      HATCHET_CLIENT_TLS_STRATEGY: none
+      ZYK_WEBHOOK_BASE: http://localhost:3000
+      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      OPENWEATHERMAP_API_KEY: ${OPENWEATHERMAP_API_KEY:-}
+      NEWSAPI_API_KEY: ${NEWSAPI_API_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+    depends_on:
+      hatchet-engine:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

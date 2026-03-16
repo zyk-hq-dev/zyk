@@ -1,0 +1,110 @@
+# Zyk MCP Server — Railway service configuration
+#
+# ── How to deploy on Railway ─────────────────────────────────────────────────
+#
+# Create 3 services in a Railway project:
+#
+#   1. Postgres          <- Add the Railway Postgres database plugin (one click)
+#
+#   2. hatchet-engine    <- "Deploy from Docker image"
+#      Image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
+#      Exposed port: 8080 (HTTP / REST API + UI)
+#      TCP port: 7077 (gRPC — enable via Railway TCP proxy)
+#      Environment variables:
+#        DATABASE_URL                  = ${{Postgres.DATABASE_URL}}
+#        SERVER_AUTH_COOKIE_SECRETS    = "$(openssl rand -hex 32) $(openssl rand -hex 32)"
+#        SERVER_AUTH_COOKIE_DOMAIN     = <hatchet-engine.up.railway.app domain>
+#        SERVER_GRPC_BIND_ADDRESS      = 0.0.0.0
+#        SERVER_GRPC_PORT              = 7077
+#        SERVER_GRPC_BROADCAST_ADDRESS = hatchet-engine.railway.internal:7077
+#        SERVER_GRPC_INSECURE          = t
+#        SERVER_AUTH_SET_EMAIL_VERIFIED = t
+#        SERVER_AUTH_COOKIE_INSECURE   = t
+#
+#   3. zyk-mcp           <- This service (source: mcp-server/ subdirectory)
+#      Environment variables: see [variables] section below
+#
+# ── Persistent volume (REQUIRED for production) ───────────────────────────────
+#
+#   In the Railway dashboard for the zyk-mcp service, add a Volume:
+#     Mount path: /app/workflows
+#
+#   This persists:
+#     - workflow .ts source files and compiled .js bundles
+#     - registry.json (the workflow registry)
+#     - .token (auto-generated Hatchet token cache)
+#
+#   Without a volume, all workflows are lost on every container restart.
+#
+# ── Token generation — automatic on first boot ────────────────────────────────
+#
+#   If HATCHET_CLIENT_TOKEN is NOT set, Zyk auto-generates one on startup:
+#     1. Polls Hatchet until healthy
+#     2. Logs in as admin@example.com / Admin123!!
+#     3. Creates a token via the Hatchet REST API
+#     4. Caches it to /app/workflows/.token (survives restarts via the volume)
+#
+#   For this to work, set HATCHET_REST_URL (see variables section below).
+#
+#   To use a manually generated token instead:
+#     Option A — Hatchet UI: https://<hatchet-engine>.up.railway.app
+#       Settings → API Tokens → Create token → set as HATCHET_CLIENT_TOKEN
+#     Option B — script (run locally):
+#       HATCHET_BASE_URL=https://<hatchet-engine>.up.railway.app \
+#         node scripts/generate-token.js
+#       Then set the printed token as HATCHET_CLIENT_TOKEN in Railway.
+#
+# ── Connecting Claude ─────────────────────────────────────────────────────────
+#
+#   Claude Desktop — add to claude_desktop_config.json:
+#     {
+#       "mcpServers": {
+#         "zyk": {
+#           "command": "npx",
+#           "args": ["-y", "zyk-mcp", "--proxy", "https://<zyk-mcp>.up.railway.app/mcp"]
+#         }
+#       }
+#     }
+#   npx downloads a tiny local bridge on first use. Node.js must be installed.
+#   When Claude Desktop ships native HTTP MCP support, switch to:
+#     { "url": "https://<zyk-mcp>.up.railway.app/mcp" }
+#
+#   Claude Code (.mcp.json):
+#     {
+#       "mcpServers": {
+#         "zyk": {
+#           "type": "http",
+#           "url": "https://<zyk-mcp>.up.railway.app/mcp"
+#         }
+#       }
+#     }
+#
+# ─────────────────────────────────────────────────────────────────────────────
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# /api/workflows returns 200 once the server is up
+healthcheckPath = "/api/workflows"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# ── Required environment variables ───────────────────────────────────────────
+# Set these in the Railway dashboard for the zyk-mcp service.
+# Do NOT commit real values here.
+#
+# HATCHET_CLIENT_TOKEN       = <token — OR omit to auto-generate on first boot>
+# HATCHET_HOST_PORT          = hatchet-engine.railway.internal:7077
+# HATCHET_CLIENT_HOST_PORT   = hatchet-engine.railway.internal:7077
+# HATCHET_REST_URL           = http://hatchet-engine.railway.internal:8080
+#                              (used by auto-bootstrap when HATCHET_CLIENT_TOKEN is not set)
+# HATCHET_CLIENT_TLS_STRATEGY = none  (set in Dockerfile; override here if needed)
+#
+# Optional — workflow secrets (passed through to generated workflow subprocesses):
+# SLACK_BOT_TOKEN            = xoxb-...
+# SLACK_SIGNING_SECRET       = <from Slack app settings>
+# STRIPE_SECRET_KEY          = sk_live_...
+# GITHUB_TOKEN               = ghp_...

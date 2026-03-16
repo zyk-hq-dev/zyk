@@ -1,0 +1,50 @@
+name: Feature request
+description: Suggest a new feature or improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! The most useful requests describe a concrete use case.
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: What workflow or use case would this enable?
+      description: |
+        Describe what you're trying to automate. What prompt would you give Claude?
+        What would happen that currently doesn't work?
+      placeholder: |
+        "I want to be able to ask Claude to create a workflow that monitors
+        my Stripe dashboard and posts a daily revenue summary to Slack, but
+        currently there's no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed solution
+      description: How do you think this should work? This could be a new MCP tool, a change to an existing one, a new webhook endpoint, etc.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you found any workarounds or alternative approaches?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Workflow execution (Hatchet integration)
+        - MCP tools (create/run/status/list/delete)
+        - Web dashboard
+        - Slack integration
+        - GitHub integration
+        - Setup / developer experience
+        - Documentation
+        - Other
+    validations:
+      required: true

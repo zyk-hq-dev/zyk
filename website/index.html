@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zyk – Workflow automation built around Claude</title>
+  <meta name="description" content="No UI to click through. No nodes to drag. You talk to Claude, and Zyk builds, deploys, and runs your workflows on durable infrastructure." />
+  <meta property="og:title" content="Zyk – Workflow automation built around Claude, not bolted onto it." />
+  <meta property="og:description" content="No UI to click through. No nodes to drag. You talk to Claude, and Zyk builds, deploys, and runs your workflows on durable infrastructure." />
+  <meta property="og:url" content="https://zyk.dev" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --teal: #5eead4;
+      --neon: #5eead4;
+      --amber: #f59e0b;
+      --bg: #0c0f0e;
+      --surface: #141918;
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #e8f0ee;
+      --muted: #7a9490;
+      --dim: #3a5450;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    nav {
+      padding: 24px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.02em;
+      color: #FFB6D9;
+      text-decoration: none;
+    }
+
+    .nav-right { display: flex; align-items: center; gap: 24px; }
+
+    .nav-link {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .nav-link:hover { color: var(--teal); }
+
+    .nav-btn {
+      background: transparent;
+      color: var(--text);
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .nav-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+    /* HERO */
+    .hero {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 100px 48px 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 400px;
+      background: radial-gradient(ellipse, rgba(45,212,191,0.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 5px 14px 5px 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--teal);
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: up 0.5s 0.1s ease forwards;
+    }
+
+    .dot {
+      width: 6px; height: 6px;
+      background: var(--teal);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--teal);
+      animation: blink 2s ease infinite;
+    }
+
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: clamp(2.2rem, 5vw, 3.75rem);
+      line-height: 1.1;
+      letter-spacing: -0.025em;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: up 0.5s 0.2s ease forwards;
+    }
+
+    h1 em {
+      font-style: normal;
+      color: var(--teal);
+    }
+
+    .sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.75;
+      max-width: 500px;
+      margin: 0 auto 44px;
+      opacity: 0;
+      animation: up 0.5s 0.3s ease forwards;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: up 0.5s 0.4s ease forwards;
+    }
+
+    .btn-main {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--teal);
+      color: #0c0f0e;
+      padding: 13px 26px;
+      border-radius: 7px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-main:hover {
+      background: #7ff5e4;
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      padding: 13px 22px;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { color: var(--teal); border-color: rgba(45,212,191,0.3); }
+
+    /* THREE PILLARS */
+    .pillars {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 48px 100px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+      background: var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      opacity: 0;
+      animation: up 0.5s 0.5s ease forwards;
+    }
+
+    .pillar {
+      background: var(--surface);
+      padding: 40px 36px;
+      transition: background 0.2s;
+    }
+    .pillar:hover { background: #151f1d; }
+
+    .pillar-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      margin-bottom: 12px;
+    }
+
+    .pillar h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+
+    .pillar p {
+      font-size: 0.9375rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* VIDEO */
+    .video-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 80px 48px 100px;
+    }
+
+    .video-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 14px;
+    }
+
+    .video-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      aspect-ratio: 16/9;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 40px 80px rgba(0,0,0,0.4), 0 0 60px rgba(45,212,191,0.04);
+    }
+
+    .video-box iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 11px;
+    }
+
+    .video-caption {
+      margin-top: 16px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--dim);
+    }
+
+    .video-caption a {
+      color: var(--muted);
+      text-decoration: none;
+      border-bottom: 1px solid var(--border);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .video-caption a:hover { color: var(--teal); border-color: rgba(45,212,191,0.3); }
+
+    hr { border: none; border-top: 1px solid var(--border); max-width: 1000px; margin: 0 auto; }
+
+    /* VS */
+    .vs {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 100px 48px;
+    }
+
+    .label {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 14px;
+    }
+
+    .vs h2 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+      margin-bottom: 56px;
+      line-height: 1.2;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1rem;
+    }
+
+    thead tr { border-bottom: 1px solid var(--border); }
+
+    th {
+      padding: 14px 20px;
+      text-align: left;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.03em;
+    }
+
+    th:first-child { color: var(--muted); width: 38%; }
+    th.n8n { color: var(--muted); }
+    th.zyk { color: var(--teal); }
+
+    td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(45,212,191,0.05);
+      color: var(--muted);
+      line-height: 1.5;
+      vertical-align: top;
+    }
+
+    td:first-child { color: var(--text); font-weight: 400; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(45,212,191,0.02); }
+
+    .c { color: #4ade80; }
+    .x { color: #f87171; }
+    .p { color: var(--amber); font-size: 0.8rem; }
+
+    /* CTA */
+    .cta {
+      border-top: 1px solid var(--border);
+      padding: 100px 48px;
+      text-align: center;
+    }
+
+    .cta h2 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: clamp(2rem, 4.5vw, 3.5rem);
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .cta h2 span { color: var(--teal); }
+    .cta p { color: var(--muted); font-size: 1rem; margin-bottom: 40px; line-height: 1.7; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    footer .logo { font-size: 1.1rem; }
+
+    .footer-links { display: flex; gap: 20px; list-style: none; }
+    .footer-links a { color: var(--dim); text-decoration: none; font-size: 0.82rem; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--teal); }
+
+    .copy { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--dim); }
+
+    @keyframes up {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      nav { padding: 20px 24px; }
+      .nav-link { display: none; }
+      .hero { padding: 80px 24px 60px; }
+      .pillars { grid-template-columns: 1fr; padding: 0 24px 80px; }
+      .video-wrap { padding: 60px 24px 80px; }
+      .vs { padding: 80px 24px; }
+      .cta { padding: 80px 24px; }
+      footer { flex-direction: column; gap: 16px; text-align: center; }
+      table { font-size: 0.8rem; }
+      td, th { padding: 12px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">Zyk</a>
+  <div class="nav-right">
+    <a href="https://blog.zyk.dev" class="nav-link">Blog</a>
+    <a href="https://playground.zyk.dev" class="nav-link">Try playground</a>
+    <a href="https://github.com/zyk-hq/zyk" class="nav-btn">Star on GitHub</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="badge"><span class="dot"></span>Alpha launching soon</div>
+  <h1>Workflow automation built around Claude,<br/>not <em>bolted onto it.</em></h1>
+  <p class="sub">
+    No UI to click through. No nodes to drag. You talk to Claude, and Zyk builds, deploys, and runs your workflows on durable infrastructure. This is only possible with Zyk.
+  </p>
+  <div class="actions">
+    <a href="https://railway.app/new/template?template=https://github.com/zyk-hq/zyk" class="btn-main">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Deploy on Railway
+    </a>
+    <a href="https://github.com/zyk-hq/zyk" class="btn-ghost">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      Star on GitHub
+    </a>
+  </div>
+</section>
+
+<!-- THREE PILLARS -->
+<div class="pillars">
+  <div class="pillar">
+    <div class="pillar-tag">INTERFACE</div>
+    <h3>Claude via MCP</h3>
+    <p>Create, trigger, and manage workflows directly in Claude. No separate tool to learn. And because Claude is the interface, you can go beyond a static task list — ask things like "show me all human-approval tasks that have been waiting longer than 24 hours."</p>
+  </div>
+  <div class="pillar">
+    <div class="pillar-tag">VISIBILITY</div>
+    <h3>Zyk UI</h3>
+    <p>Workflow diagram, task list, and run history with direct links to the Hatchet dashboard for logs and tracing.</p>
+  </div>
+  <div class="pillar">
+    <div class="pillar-tag">ENGINE</div>
+    <h3>Hatchet</h3>
+    <p>Durable execution under the hood. Retries, scheduling, and human-in-the-loop built in. Your workflows survive failures.</p>
+  </div>
+</div>
+
+<!-- VIDEO -->
+<div class="video-wrap">
+  <div class="video-label">Full demo — Slack + GitHub</div>
+  <div class="video-box">
+    <iframe
+      src="https://www.youtube.com/embed/fQX7MdDYKwc"
+      title="Zyk demo — Slack + GitHub workflow built with Claude"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <div class="video-label" style="margin-top: 48px;">Quick intro — 2 min</div>
+  <div class="video-box">
+    <iframe
+      src="https://www.youtube.com/embed/nA3vTEUrOCo"
+      title="Zyk quick intro — Star Wars API workflow"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+</div>
+
+<hr/>
+
+<!-- VS TABLE -->
+<section class="vs">
+  <div class="label">Why Zyk</div>
+  <h2>Built for Claude. Not bolted onto it.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th class="n8n">n8n / Zapier / Make</th>
+        <th class="zyk">Zyk ✦</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Primary interface</td>
+        <td>Web UI, node editor</td>
+        <td><span class="c">✓</span> Claude via MCP</td>
+      </tr>
+      <tr>
+        <td>AI role</td>
+        <td><span class="p">~</span> Bolted-on assistant, fails on complex logic</td>
+        <td><span class="c">✓</span> Claude writes, deploys and operates workflows</td>
+      </tr>
+      <tr>
+        <td>Durable execution</td>
+        <td><span class="x">✗</span> Breaks silently on failure</td>
+        <td><span class="c">✓</span> Hatchet engine, checkpointed and auto-retry</td>
+      </tr>
+      <tr>
+        <td>Human-in-the-loop</td>
+        <td><span class="x">✗</span> Not natively supported</td>
+        <td><span class="c">✓</span> Pause, ask, resume built in</td>
+      </tr>
+      <tr>
+        <td>Observability</td>
+        <td><span class="p">~</span> Basic run logs</td>
+        <td><span class="c">✓</span> Workflow diagram, task list, runs in Zyk. Full logs and traces in Hatchet.</td>
+      </tr>
+      <tr>
+        <td>Self-hostable</td>
+        <td><span class="p">~</span> n8n yes, others no</td>
+        <td><span class="c">✓</span> One-click Railway deploy, MIT license</td>
+      </tr>
+      <tr>
+        <td>Output</td>
+        <td>JSON config / node graph</td>
+        <td><span class="c">✓</span> Real TypeScript you can read and extend</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="cta">
+  <h2>The workflow most tools<br/><span>can't build.</span></h2>
+  <p>Alpha coming soon. Subscribe at <a href="https://blog.zyk.dev" style="color: var(--teal); text-decoration: none; border-bottom: 1px solid currentColor;">blog.zyk.dev</a> to be notified.</p>
+  <div class="actions">
+    <a href="https://railway.app/new/template?template=https://github.com/zyk-hq/zyk" class="btn-main">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      Deploy on Railway
+    </a>
+    <a href="https://github.com/zyk-hq/zyk" class="btn-ghost">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      Star on GitHub
+    </a>
+  </div>
+</section>
+
+<footer>
+  <a href="/" class="logo">Zyk</a>
+  <ul class="footer-links">
+    <li><a href="https://github.com/zyk-hq/zyk">GitHub</a></li>
+    <li><a href="https://blog.zyk.dev">Blog</a></li>
+    <li><a href="https://x.com/zykdev">X</a></li>
+  </ul>
+  <div class="copy">© 2026 Zyk · MIT</div>
+</footer>
+
+<!-- Consent banner -->
+<div id="consent-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:1000;border-top:1px solid rgba(255,255,255,0.07);background:#0f1412;padding:16px 24px 28px;">
+  <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <p style="font-size:13px;color:#7a9490;margin:0;line-height:1.6;">
+      We use anonymous analytics (PostHog) to understand how Zyk is used. No personal data or IP addresses are stored.
+    </p>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button onclick="declineAnalytics()" style="padding:5px 14px;border-radius:5px;border:1px solid rgba(255,255,255,0.07);background:transparent;color:#7a9490;font-size:13px;cursor:pointer;font-family:inherit;">Decline</button>
+      <button onclick="acceptAnalytics()" style="padding:5px 14px;border-radius:5px;border:none;background:#5eead4;color:#0c0f0e;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">Accept</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // PostHog snippet
+  !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a=u,u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+" (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures getActiveMatchingSurveys getSurveys getNextSurveyStep onSessionId setPersonPropertiesForFlags".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+
+  var POSTHOG_KEY = "${POSTHOG_KEY}";
+
+  function initAnalytics() {
+    if (!POSTHOG_KEY || POSTHOG_KEY === "" || POSTHOG_KEY.startsWith("$")) return;
+    posthog.init(POSTHOG_KEY, {
+      api_host: "https://us.i.posthog.com",
+      person_profiles: "identified_only",
+      capture_pageview: true,
+    });
+  }
+
+  function acceptAnalytics() {
+    localStorage.setItem("zyk-analytics-consent", "accepted");
+    document.getElementById("consent-banner").style.display = "none";
+    initAnalytics();
+  }
+
+  function declineAnalytics() {
+    localStorage.setItem("zyk-analytics-consent", "declined");
+    document.getElementById("consent-banner").style.display = "none";
+  }
+
+  // On load: init if already accepted, show banner if no decision yet
+  (function() {
+    var consent = localStorage.getItem("zyk-analytics-consent");
+    if (consent === "accepted") {
+      initAnalytics();
+    } else if (consent === null) {
+      document.getElementById("consent-banner").style.display = "block";
+    }
+  })();
+</script>
+
+</body>
+</html>

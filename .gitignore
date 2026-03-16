@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.mcp.json
+workflows/
+playground/.workflows/
+.env
+.env.local
+*.env.local
+*.Zone.Identifier
+.claude/
+mcp-server/test-*.mjs
+mcp-server/inspect-*.mjs
+mcp-server/zyk-env-debug.json
+mcp-server/runs.json
+mcp-server/workflows-api.json

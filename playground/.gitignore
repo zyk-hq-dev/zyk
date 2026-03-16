@@ -1,0 +1,7 @@
+.next/
+node_modules/
+.workflows/
+tmp/
+*.js.map
+.env.local
+.env*.local
