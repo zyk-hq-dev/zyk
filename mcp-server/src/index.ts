@@ -513,7 +513,7 @@ async function main() {
     return; // process stays alive via open stdio/HTTP connections
   }
 
-  const port = parseInt(process.env.WEBHOOK_PORT ?? "3100", 10);
+  const port = parseInt(process.env.PORT ?? process.env.WEBHOOK_PORT ?? "3100", 10);
 
   setAnswerStore(storeInteractionAnswer);
 
