@@ -515,11 +515,14 @@ async function main() {
 
   const port = parseInt(process.env.WEBHOOK_PORT ?? "3100", 10);
 
-  // Ensure HATCHET_CLIENT_TOKEN is available (auto-generates if missing)
-  await ensureHatchetToken();
+  setAnswerStore(storeInteractionAnswer);
+
+  // Start the HTTP server immediately so Railway healthchecks pass.
+  // Bootstrap and worker restore run in the background.
+  startWebhookServer(port, handleMcpRequest);
+  console.error(`Zyk MCP server listening on http://0.0.0.0:${port}/mcp`);
 
   // If stdin is piped (spawned by Claude Desktop), connect a stdio transport.
-  // This lets Claude Desktop use command/args config while Claude Code uses the HTTP URL.
   if (!process.stdin.isTTY) {
     const stdioServer = createMcpServer();
     const stdioTransport = new StdioServerTransport();
@@ -527,16 +530,12 @@ async function main() {
     console.error("Zyk MCP server connected via stdio");
   }
 
-  setAnswerStore(storeInteractionAnswer);
-
-  // Start the HTTP server — serves dashboard, webhook endpoints, AND the MCP endpoint
-  startWebhookServer(port, handleMcpRequest);
-  console.error(`Zyk MCP server listening on http://0.0.0.0:${port}/mcp`);
-
-  // Restore workers in the background
-  restoreWorkersOnStartup().catch((err) => {
-    console.error("Warning: Could not restore workers:", err);
-  });
+  // Bootstrap token and restore workers in the background.
+  ensureHatchetToken()
+    .then(() => restoreWorkersOnStartup())
+    .catch((err) => {
+      console.error("Warning: Hatchet bootstrap failed:", err);
+    });
 }
 
 // Graceful shutdown
