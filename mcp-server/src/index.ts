@@ -28,6 +28,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { IncomingMessage, ServerResponse } from "http";
 import { randomUUID } from "crypto";
+import { fstatSync } from "fs";
 
 import { createWorkflow, createWorkflowSchema } from "./tools/create-workflow.js";
 import { runWorkflow, runWorkflowSchema } from "./tools/run-workflow.js";
@@ -522,12 +523,16 @@ async function main() {
   startWebhookServer(port, handleMcpRequest);
   console.error(`Zyk MCP server listening on http://0.0.0.0:${port}/mcp`);
 
-  // If stdin is piped (spawned by Claude Desktop), connect a stdio transport.
-  if (!process.stdin.isTTY) {
+  // If stdin is an actual pipe (spawned by Claude Desktop), connect a stdio transport.
+  // We check isFIFO() to distinguish real IPC pipes from /dev/null (Docker/Railway).
+  const stdinIsPipe = (() => { try { return fstatSync(0).isFIFO(); } catch { return false; } })();
+  if (stdinIsPipe) {
     const stdioServer = createMcpServer();
     const stdioTransport = new StdioServerTransport();
     await stdioServer.connect(stdioTransport);
     console.error("Zyk MCP server connected via stdio");
+  } else {
+    console.error("Zyk MCP server running in HTTP-only mode (stdin is not a pipe)");
   }
 
   // Bootstrap token and restore workers in the background.
@@ -537,6 +542,17 @@ async function main() {
       console.error("Warning: Hatchet bootstrap failed:", err);
     });
 }
+
+// Global error handlers — log before crashing so Railway captures the cause
+process.on("uncaughtException", (err) => {
+  console.error("[FATAL] Uncaught exception:", err);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[FATAL] Unhandled promise rejection:", reason);
+  process.exit(1);
+});
 
 // Graceful shutdown
 process.on("SIGINT", async () => {
