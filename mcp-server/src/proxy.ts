@@ -25,9 +25,14 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 export async function runProxy(remoteUrl: string): Promise<void> {
   process.stderr.write(`[zyk] Connecting to ${remoteUrl}\n`);
 
+  const apiKey = process.env.ZYK_API_KEY;
+  const requestInit: RequestInit = apiKey
+    ? { headers: { Authorization: `Bearer ${apiKey}` } }
+    : {};
+
   let httpTransport: StreamableHTTPClientTransport;
   try {
-    httpTransport = new StreamableHTTPClientTransport(new URL(remoteUrl));
+    httpTransport = new StreamableHTTPClientTransport(new URL(remoteUrl), { requestInit });
   } catch {
     process.stderr.write(`[zyk] Invalid URL: ${remoteUrl}\n`);
     process.exit(1);
