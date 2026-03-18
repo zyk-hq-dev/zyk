@@ -89,6 +89,9 @@ function forkWorker(workflowId: string, filePath: string): Promise<void> {
           // Can be overridden by setting HATCHET_CLIENT_TLS_STRATEGY explicitly.
           HATCHET_CLIENT_TLS_STRATEGY:
             process.env.HATCHET_CLIENT_TLS_STRATEGY ?? "none",
+          // Strip server-internal secrets so workflow code cannot exfiltrate them.
+          // Workflows only need Hatchet SDK vars + user-supplied integration secrets.
+          ZYK_API_KEY: undefined,
         },
         // No execArgv — workflow files are pre-compiled to .js by esbuild,
         // so no TypeScript loader is needed at worker runtime.
