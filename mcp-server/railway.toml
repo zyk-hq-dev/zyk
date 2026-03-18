@@ -74,7 +74,8 @@
 #       "mcpServers": {
 #         "zyk": {
 #           "type": "http",
-#           "url": "https://<zyk-mcp>.up.railway.app/mcp"
+#           "url": "https://<zyk-mcp>.up.railway.app/mcp",
+#           "headers": { "Authorization": "Bearer <your-ZYK_API_KEY>" }
 #         }
 #       }
 #     }
@@ -102,6 +103,12 @@ restartPolicyMaxRetries = 10
 # HATCHET_REST_URL           = http://hatchet-engine.railway.internal:8080
 #                              (used by auto-bootstrap when HATCHET_CLIENT_TOKEN is not set)
 # HATCHET_CLIENT_TLS_STRATEGY = none  (set in Dockerfile; override here if needed)
+#
+# ZYK_API_KEY                = <random secret — generate with: openssl rand -hex 32>
+#                              Protects the MCP endpoint from unauthorized access.
+#                              Set this in Railway, then add the same value to your
+#                              Claude config as: "Authorization": "Bearer <key>"
+#                              If not set, the server runs unauthenticated (local dev only).
 #
 # Optional — workflow secrets (passed through to generated workflow subprocesses):
 # SLACK_BOT_TOKEN            = xoxb-...

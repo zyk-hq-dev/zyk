@@ -965,6 +965,30 @@ async function handleRequest(
   const url = req.url ?? "/";
   const method = req.method ?? "GET";
 
+  // ── API key auth ─────────────────────────────────────────────────────────────
+  // If ZYK_API_KEY is set, every request must carry "Authorization: Bearer <key>"
+  // EXCEPT: Slack interaction callbacks (Slack can't send our key — they're
+  // verified separately by HMAC signature) and the /api/workflows healthcheck
+  // (Railway probes this path before the user can configure a header).
+  const apiKey = process.env.ZYK_API_KEY;
+  const isSlackCallback = url === "/slack/interactions" || url.startsWith("/slack/pending/");
+  const isHealthcheck = url === "/api/workflows" && method === "GET";
+  if (apiKey && !isSlackCallback && !isHealthcheck) {
+    const authHeader = req.headers["authorization"] ?? "";
+    const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    let valid = false;
+    try {
+      valid = provided.length > 0 &&
+        timingSafeEqual(Buffer.from(provided), Buffer.from(apiKey));
+    } catch { /* length mismatch — invalid */ }
+    if (!valid) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "Unauthorized: invalid or missing API key" }));
+      return;
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   // /mcp — delegate to MCP HTTP transport
   if (url === "/mcp" || url.startsWith("/mcp?")) {
     if (!mcpHandler) {
