@@ -1031,9 +1031,13 @@ async function handleRequest(
     const sinceHours = parseInt(params.get("since_hours") ?? "24", 10);
     const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000).toISOString();
 
-    // Build name→zykId map for linking runs to our workflows
+    // Build name→zykId map for linking runs to our workflows.
+    // Key by hatchetName (kebab-case) preferred, fallback to human-readable name.
     const nameMap: Record<string, string> = {};
-    for (const wf of listWorkflows()) nameMap[wf.name] = wf.id;
+    for (const wf of listWorkflows()) {
+      if (wf.hatchetName) nameMap[wf.hatchetName] = wf.id;
+      nameMap[wf.name] = wf.id;
+    }
 
     try {
       const hatchet = getHatchetClient();
@@ -1048,7 +1052,8 @@ async function handleRequest(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows: any[] = (resp.data as any)?.rows ?? [];
       const runs = rows.map((r) => {
-        const workflowName: string = r.displayName?.split("/")?.[0] ?? r.workflowName ?? "unknown";
+        const rawName: string = r.displayName?.split("/")?.[0] ?? r.workflowName ?? "unknown";
+        const workflowName = rawName.replace(/-\d{10,}$/, "");
         return {
           run_id: r.metadata?.id ?? r.id,
           workflow_name: workflowName,

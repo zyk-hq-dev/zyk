@@ -26,13 +26,20 @@ export const listRunsSchema = z.object({
 
 export type ListRunsInput = z.infer<typeof listRunsSchema>;
 
-// Build a map of Hatchet workflow name → Zyk workflow ID for display
+// Build a map of Hatchet workflow name → Zyk workflow ID for display.
+// Keys: hatchetName (kebab-case internal name) preferred, fallback to human-readable name.
 function buildNameMap(): Record<string, string> {
   const map: Record<string, string> = {};
   for (const entry of listWorkflows()) {
+    if (entry.hatchetName) map[entry.hatchetName] = entry.id;
     map[entry.name] = entry.id;
   }
   return map;
+}
+
+/** Strip Hatchet's timestamp suffix from run display names (e.g. "my-wf-1773868500167" → "my-wf") */
+function stripTimestamp(name: string): string {
+  return name.replace(/-\d{10,}$/, "");
 }
 
 export async function listRuns(input: ListRunsInput) {
@@ -65,7 +72,8 @@ export async function listRuns(input: ListRunsInput) {
     // Normalize and optionally filter
     const normalized = runs
       .map((run: any) => {
-        const workflowName: string = run.displayName?.split("/")[0] ?? run.workflowName ?? "unknown";
+        const rawName: string = run.displayName?.split("/")[0] ?? run.workflowName ?? "unknown";
+        const workflowName = stripTimestamp(rawName);
         const zykId = nameMap[workflowName];
         return {
           run_id: run.metadata?.id ?? run.id,

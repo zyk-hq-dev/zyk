@@ -21,6 +21,8 @@ const REGISTRY_PATH = join(WORKFLOWS_DIR, "registry.json");
 export interface WorkflowRegistryEntry {
   id: string;
   name: string;
+  /** Kebab-case name used by Hatchet internally (matches workflow name in run displayName) */
+  hatchetName?: string;
   description: string;
   trigger: "on-demand" | "schedule";
   schedule?: string;
@@ -34,6 +36,7 @@ export interface WorkflowRegistryEntry {
 interface PersistedEntry {
   id: string;
   name: string;
+  hatchetName?: string;
   description: string;
   trigger: "on-demand" | "schedule";
   schedule?: string;
@@ -82,13 +85,14 @@ function persistRegistry(registry: Record<string, WorkflowRegistryEntry>) {
 export async function registerWorkflow(params: {
   id: string;
   name: string;
+  hatchetName?: string;
   description: string;
   code: string;
   trigger: "on-demand" | "schedule";
   schedule?: string;
   diagram?: string;
 }): Promise<WorkflowRegistryEntry> {
-  const { id, name, description, code, trigger, schedule, diagram } = params;
+  const { id, name, hatchetName, description, code, trigger, schedule, diagram } = params;
 
   // Save the workflow code to disk
   const filePath = saveWorkflowCode(id, code);
@@ -96,6 +100,7 @@ export async function registerWorkflow(params: {
   const entry: WorkflowRegistryEntry = {
     id,
     name,
+    hatchetName,
     description,
     trigger,
     schedule,

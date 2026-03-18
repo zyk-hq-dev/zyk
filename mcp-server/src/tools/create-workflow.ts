@@ -151,6 +151,7 @@ export async function createWorkflow(input: CreateWorkflowInput) {
     const entry = await registerWorkflow({
       id,
       name,
+      hatchetName: sanitizedNameMatch?.[1],
       description,
       code,
       trigger,
