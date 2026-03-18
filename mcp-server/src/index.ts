@@ -543,15 +543,18 @@ async function main() {
     });
 }
 
-// Global error handlers — log before crashing so Railway captures the cause
+// Global error handlers
 process.on("uncaughtException", (err) => {
   console.error("[FATAL] Uncaught exception:", err);
   process.exit(1);
 });
 
+// Log unhandled rejections but do NOT exit.
+// The Hatchet SDK starts background gRPC connections that can fail asynchronously
+// (e.g. when HATCHET_HOST_PORT is misconfigured). Those failures must not kill the
+// HTTP server — Claude must still be able to connect via MCP.
 process.on("unhandledRejection", (reason) => {
-  console.error("[FATAL] Unhandled promise rejection:", reason);
-  process.exit(1);
+  console.error("[WARN] Unhandled promise rejection (server continuing):", reason);
 });
 
 // Graceful shutdown
