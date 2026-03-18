@@ -144,6 +144,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(6) await hatchet.worker(...). " +
         "(7) Use process.env.VAR for secrets. " +
         "(8) Use fetch() for HTTP — no extra packages. " +
+        "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk browser dashboard (localhost:3100). " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",
       inputSchema: {
