@@ -291,6 +291,7 @@ Any variable you add to the service is automatically available in generated work
 ## Known limitations
 
 - **Single-user/single-team.** All workflows share one Hatchet tenant. No auth, no per-user namespacing.
+- **Human-in-the-loop via Slack or Zyk dashboard only.** Workflows can pause and wait for a human response through Slack button clicks or Zyk's native task UI. Waiting for input from other systems (e.g. a Trello comment, an email reply, a GitHub review) is not supported — you'd need to poll those APIs yourself.
 - **Slack interaction state is in-memory.** If the MCP server restarts while a workflow is waiting for a Slack button click, that pending state is lost.
 - **No code sandboxing.** Generated workflows run with full Node.js permissions and inherit the server's environment variables. This is the right tradeoff for single-team use; it's not appropriate for untrusted multi-user environments.
 - **Webhook receiver is unauthenticated.** `POST /webhook/:id` accepts requests from anywhere. Put it behind a reverse proxy with auth for sensitive workflows.
