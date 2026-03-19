@@ -132,7 +132,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       --font-mono: "JetBrains Mono", ui-monospace, monospace;
     }
     *, *::before, *::after { box-sizing: border-box; }
-    html { font-size: 17px; }
+    html { font-size: 20px; }
     html, body { height: 100%; overflow: hidden; }
     body {
       font-family: var(--font-sans);
