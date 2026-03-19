@@ -27,7 +27,6 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { IncomingMessage, ServerResponse } from "http";
-import { randomUUID } from "crypto";
 import { fstatSync } from "fs";
 
 import { createWorkflow, createWorkflowSchema } from "./tools/create-workflow.js";
@@ -441,58 +440,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   return server;
 }
 
-// ── HTTP session management ───────────────────────────────────────────────────
-
-const sessions = new Map<string, StreamableHTTPServerTransport>();
+// ── HTTP request handler (stateless mode) ────────────────────────────────────
+// Each POST is handled independently — no session state, no SSE GET needed.
+// This avoids 409 race conditions and is compatible with Railway's proxy which
+// kills long-lived SSE connections anyway.
 
 async function handleMcpRequest(
   req: IncomingMessage,
   res: ServerResponse,
   body?: unknown
 ): Promise<void> {
-  const sessionId = req.headers["mcp-session-id"] as string | undefined;
   const method = req.method ?? "GET";
 
   // CORS preflight
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (method === "OPTIONS") { res.writeHead(204); res.end(); return; }
 
   if (method === "POST") {
-    if (sessionId && sessions.has(sessionId)) {
-      await sessions.get(sessionId)!.handleRequest(req, res, body);
-      return;
-    }
-    // New session
-    const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      onsessioninitialized: (id: string) => { sessions.set(id, transport); },
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined, // stateless — no session tracking
     });
-    transport.onclose = () => {
-      if (transport.sessionId) sessions.delete(transport.sessionId);
-    };
     const sessionServer = createMcpServer();
     await sessionServer.connect(transport);
     await transport.handleRequest(req, res, body);
-    return;
-  }
-
-  if (method === "GET") {
-    if (!sessionId || !sessions.has(sessionId)) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "No active session" }));
-      return;
-    }
-    await sessions.get(sessionId)!.handleRequest(req, res);
-    return;
-  }
-
-  if (method === "DELETE") {
-    if (sessionId) {
-      await sessions.get(sessionId)?.close();
-      sessions.delete(sessionId);
-    }
-    res.writeHead(200); res.end();
+    // Clean up after request completes
+    await sessionServer.close().catch(() => {});
     return;
   }
 
