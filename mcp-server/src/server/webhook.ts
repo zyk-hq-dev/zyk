@@ -995,7 +995,9 @@ async function handleRequest(
   // The dashboard HTML and favicon must load in a browser without auth headers.
   // The HTML embeds the API key as a fetch interceptor, so subsequent API calls are authenticated.
   const isDashboardPage = method === "GET" && (url === "/" || url === "/favicon.svg");
-  if (apiKey && !isSlackCallback && !isHealthcheck && !isDashboardPage) {
+  // Worker subprocesses call these endpoints from localhost without auth headers.
+  const isWorkerEndpoint = url === "/interact/ask" || url.startsWith("/interact/respond/");
+  if (apiKey && !isSlackCallback && !isHealthcheck && !isDashboardPage && !isWorkerEndpoint) {
     const authHeader = req.headers["authorization"] ?? "";
     const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     let valid = false;
