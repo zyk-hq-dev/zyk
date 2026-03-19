@@ -44,16 +44,18 @@ export async function deleteWorkflowTool(input: DeleteWorkflowInput) {
     clearPendingQuestionsForWorkflow(entry.name);
 
     // Also remove from Hatchet (best-effort — don't fail if Hatchet is unreachable)
+    let hatchetWarning: string | undefined;
     try {
       await deleteFromHatchet(entry.hatchetName ?? entry.name, entry.name);
     } catch (hatchetErr) {
-      console.error(`Warning: could not delete workflow from Hatchet: ${hatchetErr instanceof Error ? hatchetErr.message : hatchetErr}`);
+      hatchetWarning = `Workflow removed from Zyk but could not be deleted from Hatchet: ${hatchetErr instanceof Error ? hatchetErr.message : hatchetErr}. You may need to delete it manually in the Hatchet UI.`;
     }
 
     track("workflow_deleted");
     return {
       success: true,
       message: `Workflow "${entry.name}" (${workflow_id}) has been deleted and its worker stopped.`,
+      ...(hatchetWarning ? { warning: hatchetWarning } : {}),
     };
   } catch (err) {
     return {
