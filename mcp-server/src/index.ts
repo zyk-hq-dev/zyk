@@ -165,7 +165,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
           diagram: {
             type: "string",
             description:
-              "Mermaid flowchart diagram. Use flowchart TD, plain node labels, no %%{init}%% block. " +
+              "Mermaid flowchart diagram (flowchart TD). Rules:\n" +
+              "- Node labels MUST be descriptive human-readable text — NEVER use kebab-case task names from the code (e.g. write 'Fetch films from SWAPI' not 'fetch-film', 'Ask user about favourite film' not 'ask-user')\n" +
+              "- Shapes: ([...]) for trigger/done nodes only, [...] for normal steps, {...} for decisions/branches, [/.../] for parallel steps\n" +
+              "- Always start with a trigger node: ([\"▶ On-demand\"]) or ([\"⏰ Schedule: <expr>\"])\n" +
+              "- Always end with a terminal node: ([\"✓ Done\"])\n" +
+              "- One node per task — never collapse multiple tasks into one box\n" +
+              "- Add a {...} diamond for every if/else branch with labelled edges (|Yes|, |No|, |approved|, etc.)\n" +
+              "- Use subgraph for any loop with a back-edge — never flatten a loop into a linear sequence\n" +
+              "- Show parallel tasks as separate nodes fanning out from a common predecessor\n" +
+              "- Show polling/waiting steps as their own node (e.g. [Poll for user response])\n" +
+              "- No %%{init}%% block, no emoji in node labels\n" +
               "Do NOT output this diagram in your reply — it is rendered automatically in the Zyk dashboard.",
           },
         },
@@ -192,7 +202,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
             description: "Updated trigger type",
           },
           schedule: { type: "string", description: "Updated cron expression" },
-          diagram: { type: "string", description: "Updated Mermaid diagram" },
+          diagram: { type: "string", description: "Updated Mermaid diagram — follow the same labeling rules as create_workflow: descriptive human-readable node labels, never kebab-case task names." },
         },
         required: ["workflow_id"],
       },
