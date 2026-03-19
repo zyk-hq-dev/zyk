@@ -140,7 +140,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       margin: 0;
       padding: 0;
       line-height: 1.5;
-      font-size: 14px;
+      font-size: 15px;
       -webkit-font-smoothing: antialiased;
       display: flex;
       flex-direction: column;
