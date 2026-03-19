@@ -992,7 +992,10 @@ async function handleRequest(
   const apiKey = process.env.ZYK_API_KEY;
   const isSlackCallback = url === "/slack/interactions" || url.startsWith("/slack/pending/");
   const isHealthcheck = url === "/api/workflows" && method === "GET";
-  if (apiKey && !isSlackCallback && !isHealthcheck) {
+  // The dashboard HTML and favicon must load in a browser without auth headers.
+  // The HTML embeds the API key as a fetch interceptor, so subsequent API calls are authenticated.
+  const isDashboardPage = method === "GET" && (url === "/" || url === "/favicon.svg");
+  if (apiKey && !isSlackCallback && !isHealthcheck && !isDashboardPage) {
     const authHeader = req.headers["authorization"] ?? "";
     const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     let valid = false;
