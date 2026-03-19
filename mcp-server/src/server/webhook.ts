@@ -82,7 +82,25 @@ function sendHtml(res: ServerResponse, status: number, html: string) {
 
 // ── HTML pages ────────────────────────────────────────────────────────────────
 
-function landingPage(_port: number, hatchetUrl: string): string {
+function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string {
+  // Inject a fetch interceptor so the dashboard can call authenticated API endpoints.
+  // The key is embedded in the HTML only when ZYK_API_KEY is set — the browser
+  // then sends it as an Authorization header on all same-origin requests.
+  const authScript = apiKey
+    ? `<script>
+  (function() {
+    var _key = ${JSON.stringify(apiKey)};
+    var _orig = window.fetch.bind(window);
+    window.fetch = function(url, opts) {
+      opts = opts || {};
+      if (typeof url === 'string' && (url.startsWith('/') || url.startsWith(location.origin))) {
+        opts.headers = Object.assign({ 'Authorization': 'Bearer ' + _key }, opts.headers || {});
+      }
+      return _orig(url, opts);
+    };
+  })();
+<\/script>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -93,6 +111,7 @@ function landingPage(_port: number, hatchetUrl: string): string {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  ${authScript}
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <style>
     :root {
@@ -1021,7 +1040,7 @@ async function handleRequest(
 
   // GET / — landing page
   if (method === "GET" && url === "/") {
-    sendHtml(res, 200, landingPage(port, process.env.HATCHET_UI_URL ?? "http://localhost:8888"));
+    sendHtml(res, 200, landingPage(port, process.env.HATCHET_UI_URL ?? "http://localhost:8888", process.env.ZYK_API_KEY));
     return;
   }
 
