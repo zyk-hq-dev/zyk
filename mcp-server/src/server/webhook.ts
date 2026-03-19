@@ -594,6 +594,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
     const svgCache = new Map(); // wfId -> rendered SVG string
     let selectedWfId = null;
     let allWorkflows = [];
+    let lastRenderedFingerprint = null; // tracks what was last rendered to avoid unnecessary redraws
     let latestRuns = [];
 
     function escHtml(str) {
@@ -763,6 +764,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
           btn.style.fontSize = '.72rem';
           btn.addEventListener('click', () => {
             selectedWfId = wf.id;
+            lastRenderedFingerprint = null; // force re-render on tab switch
             container.querySelectorAll('[data-wfid]').forEach(b => b.classList.toggle('active', b.dataset.wfid === wf.id));
             renderSelectedWorkflow();
           });
@@ -828,8 +830,23 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       emptyEl.style.display = 'none';
       viewEl.style.display = 'flex';
 
-      renderSubtabs();
-      renderSelectedWorkflow();
+      // Only re-render when something meaningful changed — avoids resetting pan/zoom on every poll
+      const selectedWf = workflows.find(w => w.id === selectedWfId);
+      const fingerprint = JSON.stringify({
+        ids: workflows.map(w => w.id),
+        names: workflows.map(w => w.name),
+        selected: selectedWfId,
+        diagram: selectedWf?.diagram,
+        description: selectedWf?.description,
+        trigger: selectedWf?.trigger,
+        schedule: selectedWf?.schedule,
+      });
+
+      if (fingerprint !== lastRenderedFingerprint) {
+        lastRenderedFingerprint = fingerprint;
+        renderSubtabs();
+        renderSelectedWorkflow();
+      }
     }
 
     loadAndRender();
