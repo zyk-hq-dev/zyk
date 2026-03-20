@@ -898,7 +898,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       questionEl.className = 'task-question';
       // Strip basic markdown (bold, italic, backticks) before displaying
       const rawMsg = task.message ?? task.question ?? '';
-      questionEl.textContent = rawMsg.replace(/\\*\\*(.+?)\\*\\*/g, '$1').replace(/\\*(.+?)\\*/g, '$1').replace(/\`(.+?)\`/g, '$1');
+      questionEl.textContent = rawMsg.replace(/\\*\\*(.+?)\\*\\*/g, '$1').replace(/\\*(.+?)\\*/g, '$1').replace(/\`(.+?)\`/g, '$1').replace(/\`/g, '');
       card.appendChild(questionEl);
 
       const options = task.options ?? [];
@@ -908,7 +908,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
         options.forEach(opt => {
           const btn = document.createElement('button');
           btn.className = 'task-opt-btn';
-          btn.textContent = opt;
+          btn.textContent = opt.charAt(0).toUpperCase() + opt.slice(1);
           btn.addEventListener('click', () => submitTaskAnswer(task.correlationId, opt, card));
           optsEl.appendChild(btn);
         });
