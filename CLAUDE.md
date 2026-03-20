@@ -176,7 +176,7 @@ Then wait for the user's answers before writing code.
 - How to pass secrets — always use `process.env.VAR`
 - Whether to add logging — always use `ctx.log()` for key steps
 - Code structure, parallelism, or step ordering — decide yourself based on the workflow logic
-- How to wait for Slack button clicks — always use the `/slack/pending/:correlationId` polling pattern (see below). **Never use `waitForEvent()` or Hatchet external events for Slack interactions.**
+- How to wait for human input — always use `workflow.durableTask()` + `ctx.waitForEvent(correlationId)`. Never use polling loops.
 - Where to persist files — always use `/data` (Railway persistent volume mount). No S3 or external storage needed.
 
 Once functional requirements are clear, **generate the code and call `create_workflow` immediately.** Do not ask for approval, do not call `list_workflows` or read files first, do not explain what you're about to do — just build and deploy.
@@ -429,15 +429,10 @@ workflow.task({
 
 ### Waiting for a Slack button click
 
-Zyk's webhook server has a built-in Slack interactions endpoint. When a user clicks a button in Slack, the action is stored server-side and your workflow retrieves it by polling.
-
-**How it works:**
-1. Post a Slack message with an `actions` block. Set `block_id` to a unique correlationId (e.g. `"approval-" + Date.now()`).
-2. Poll `GET http://localhost:3100/slack/pending/<correlationId>` every 3 seconds.
-3. The endpoint returns `{ pending: true }` while waiting, or `{ pending: false, action: "button_action_id", userId: "U123...", username: "florian" }` once clicked. The result is consumed on first read.
+Use `workflow.durableTask()` — Hatchet suspends the step durably in its DB and resumes it when the button is clicked. No polling loop, survives server restarts.
 
 ```typescript
-// Step 1: post a message with buttons
+// Step 1: post a message with buttons (regular task)
 const requestApproval = workflow.task({
   name: "request-approval",
   retries: 3,
@@ -455,7 +450,7 @@ const requestApproval = workflow.task({
           { type: "section", text: { type: "mrkdwn", text: "Approve this deployment?" } },
           {
             type: "actions",
-            block_id: correlationId,   // ← this is the key
+            block_id: correlationId,   // ← must match the correlationId used in waitForEvent
             elements: [
               { type: "button", text: { type: "plain_text", text: "Approve" }, action_id: "approve", style: "primary" },
               { type: "button", text: { type: "plain_text", text: "Reject" }, action_id: "reject", style: "danger" },
@@ -471,93 +466,73 @@ const requestApproval = workflow.task({
   },
 });
 
-// Step 2: poll for the button click
-workflow.task({
+// Step 2: wait for the button click — durable, no polling
+const waitForApproval = workflow.durableTask({
   name: "wait-for-approval",
   parents: [requestApproval],
-  retries: 0,           // never retry a polling loop
+  executionTimeout: "24h",
   fn: async (_input, ctx) => {
     const { correlationId } = await ctx.parentOutput(requestApproval) as { correlationId: string };
-    const base = process.env.ZYK_WEBHOOK_BASE ?? "http://localhost:3100";
-    const deadline = Date.now() + 24 * 60 * 60 * 1000;  // 24h timeout
-
     await ctx.log(`Waiting for approval (id=${correlationId})`);
-    while (Date.now() < deadline) {
-      const res = await fetch(`${base}/slack/pending/${encodeURIComponent(correlationId)}`);
-      const data = await res.json() as { pending: boolean; action?: string; userId?: string };
-      if (!data.pending && data.action) {
-        await ctx.log(`Decision: ${data.action} by ${data.userId}`);
-        return { approved: data.action === "approve", action: data.action, userId: data.userId };
-      }
-      await new Promise(r => setTimeout(r, 3_000));   // poll every 3s
-    }
-    throw new Error("Approval timed out after 24h");
+    const result = await ctx.waitForEvent(correlationId);
+    await ctx.log(`Decision: ${result.action} by ${result.userId}`);
+    return { approved: result.action === "approve", action: result.action as string, userId: result.userId as string };
   },
 });
 ```
 
 **Rules:**
 - Always set `block_id` on the `actions` block — that's the correlationId Zyk uses to match the click
-- Each button needs a unique `action_id` — that's what comes back in `data.action`
-- Use `retries: 0` on the polling task — retrying would lose the correlationId state
-- For multiple sequential button prompts (e.g. acknowledge → severity → resolve), generate a fresh `correlationId` each time with `Date.now()`
+- Each button needs a unique `action_id` — that's what comes back in `result.action`
+- Use `workflow.durableTask()` — never `workflow.task()` — for the waiting step
+- `executionTimeout` sets the maximum wait (e.g. `"24h"`)
 - Slack requires a public HTTPS URL to deliver button clicks. For local development use [ngrok](https://ngrok.com): run `ngrok http 3100` and set the Slack app's **Interactivity Request URL** to `https://<your-ngrok-url>/slack/interactions`
 
 ---
 
 ### Asking the user a question (interactive workflows)
 
-Workflows can pause and ask the user a question via the `/interact/ask` endpoint. The user answers using the Zyk dashboard or the `respond_task` MCP tool.
+Use `workflow.durableTask()` — Hatchet suspends the step durably and resumes it when the user answers. The question appears in the Zyk dashboard Tasks tab.
 
 ```typescript
-// Step 1: post a question and wait for the answer
-const askUser = workflow.task({
+const askUser = workflow.durableTask({
   name: "ask-user",
-  retries: 0,   // never retry a polling loop
+  executionTimeout: "24h",
   fn: async (_input, ctx) => {
     const correlationId = `question-${Date.now()}`;
     const base = process.env.ZYK_WEBHOOK_BASE ?? "http://localhost:3100";
 
-    // Register the question
+    // Register the question so it appears in the Zyk dashboard
     await fetch(`${base}/interact/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         correlationId,
-        workflowName: "my-workflow-name",   // ← REQUIRED — MUST match workflow name exactly (e.g. "starwars-survey")
+        workflowName: "my-workflow-name",   // ← REQUIRED — must match hatchet.workflow({ name: "..." }) exactly
         message: "Do you want to proceed?",
-        options: ["yes", "no"],             // optional list of choices shown as buttons
-        timeoutSeconds: 86400,              // ← REQUIRED — set to same duration as your polling deadline (in seconds)
+        options: ["yes", "no"],             // optional — omit for free-text answers
+        timeoutSeconds: 86400,              // ← REQUIRED — must match executionTimeout in seconds
       }),
     });
 
     await ctx.log(`Question posted (id=${correlationId})`);
 
-    // Poll for the answer
-    const timeoutMs = 24 * 60 * 60 * 1000;
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      const res = await fetch(`${base}/slack/pending/${encodeURIComponent(correlationId)}`);
-      const data = await res.json() as { pending: boolean; action?: string };
-      if (!data.pending && data.action) {
-        await ctx.log(`User answered: ${data.action}`);
-        return { answer: data.action };
-      }
-      await new Promise(r => setTimeout(r, 3_000));
-    }
-    throw new Error("Question timed out after 24h");
+    // Suspend durably — resumes automatically when user answers
+    const result = await ctx.waitForEvent(correlationId);
+
+    await ctx.log(`User answered: ${result.action}`);
+    return { answer: result.action as string };
   },
 });
 ```
 
 **Rules:**
-- **ALWAYS set `workflowName`** — it is REQUIRED. Set it to the exact workflow name (the value passed to `hatchet.workflow({ name: "..." })`). Without it, the task will never appear in the Zyk dashboard and will never be cleaned up when the workflow is deleted.
-- Use the same `/slack/pending/:correlationId` polling endpoint as Slack button clicks
-- Use `retries: 0` — retrying loses the correlationId state
+- **Always use `workflow.durableTask()`** — never `workflow.task()` for interactive steps
+- **ALWAYS set `workflowName`** in the `/interact/ask` body — required for the task to appear in the dashboard and be cleaned up on workflow delete
 - `options` is optional; omit it for free-text answers, include it for button choices
-- Always pass `timeoutSeconds` matching your polling deadline (e.g. `timeoutSeconds: 14400` for a 4-hour deadline) so the dashboard auto-removes expired tasks
-- **NEVER call `/interact/ask` to display results or summaries** — it creates an interactive task requiring user input. Use `ctx.log()` for output-only content. `/interact/ask` is ONLY for questions that require a user response.
-- **No icons or emoji anywhere in workflow code** — not in `message`, not in `options`, not in `ctx.log()` strings, not in summaries. Plain text only.
+- Always pass `timeoutSeconds` matching `executionTimeout` so the dashboard auto-removes expired tasks
+- **NEVER call `/interact/ask` to display results or summaries** — use `ctx.log()` for output-only content. `/interact/ask` is ONLY for questions requiring a user response.
+- **No icons or emoji anywhere in workflow code** — not in `message`, not in `options`, not in `ctx.log()` strings. Plain text only.
 
 ---
 

@@ -1225,14 +1225,19 @@ async function handleRequest(
       const user = payload.user as Record<string, string>;
       for (const action of actions) {
         const correlationId = action.block_id as string;
+        const actionId = action.action_id as string;
         if (correlationId) {
-          pendingInteractions.set(correlationId, {
-            action: action.action_id as string,
+          const payload = {
+            action: actionId,
             userId: user?.id ?? "unknown",
-            username: user?.username,
+            username: user?.username ?? "unknown",
             timestamp: new Date().toISOString(),
-          });
-          console.error(`[Slack] Received action "${action.action_id}" for correlationId "${correlationId}"`);
+          };
+          // Keep in-memory store for legacy polling workflows
+          pendingInteractions.set(correlationId, payload);
+          // Push Hatchet event for durable-task workflows using ctx.waitForEvent()
+          pushHatchetEvent(correlationId, payload).catch(() => {});
+          console.error(`[Slack] Received action "${actionId}" for correlationId "${correlationId}"`);
         }
       }
     }
@@ -1314,11 +1319,11 @@ async function handleRequest(
       return;
     }
     consumePendingQuestion(correlationId);
-    pendingInteractions.set(correlationId, {
-      action,
-      userId: "dashboard-user",
-      timestamp: new Date().toISOString(),
-    });
+    const payload = { action, userId: "dashboard-user", timestamp: new Date().toISOString() };
+    // Keep in-memory store for legacy polling workflows
+    pendingInteractions.set(correlationId, payload);
+    // Push Hatchet event for durable-task workflows using ctx.waitForEvent()
+    pushHatchetEvent(correlationId, payload).catch(() => {});
     sendJson(res, 200, { ok: true });
     return;
   }
@@ -1358,14 +1363,31 @@ async function handleRequest(
   });
 }
 
+// ── Hatchet event push ────────────────────────────────────────────────────────
+// Push a durable event so workflow.durableTask() steps using ctx.waitForEvent()
+// can resume. Fire-and-forget — errors are logged but never thrown.
+
+async function pushHatchetEvent(correlationId: string, payload: Record<string, unknown>): Promise<void> {
+  try {
+    const hatchet = getHatchetClient();
+    await hatchet.events.push(correlationId, payload);
+    console.error(`[Events] Pushed Hatchet event for correlationId=${correlationId}`);
+  } catch (err) {
+    console.error(`[Events] Could not push Hatchet event for ${correlationId}:`, err instanceof Error ? err.message : err);
+  }
+}
+
 // ── Exported helpers ──────────────────────────────────────────────────────────
 
 export function storeInteractionAnswer(correlationId: string, action: string): void {
+  // Keep in-memory store for legacy polling workflows and dashboard UI
   pendingInteractions.set(correlationId, {
     action,
     userId: "claude-user",
     timestamp: new Date().toISOString(),
   });
+  // Also push a Hatchet event for durable-task workflows using ctx.waitForEvent()
+  pushHatchetEvent(correlationId, { action, userId: "claude-user" }).catch(() => {});
 }
 
 // ── Server startup ────────────────────────────────────────────────────────────

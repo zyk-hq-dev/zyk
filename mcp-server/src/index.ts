@@ -72,44 +72,48 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "error handling (always throw on non-OK), retries (always 3), HTTP library (always fetch()), secrets (always process.env.VAR), " +
         "how to ask the user a question — use the NATIVE INTERACTIONS pattern by default (POST /interact/ask). Only use Slack buttons if the user explicitly mentions Slack.\n" +
         "Once functional requirements are clear, generate code and call this tool immediately — no approval needed.\n" +
-        "\n\nNATIVE INTERACTIONS — default pattern for asking the user questions. Works in the Zyk dashboard without Slack setup:\n" +
-        "1. Generate a correlationId: `const correlationId = \\`question-\\${Date.now()}\\``\n" +
-        "2. POST to ZYK_WEBHOOK_BASE/interact/ask with { correlationId, message, options? }\n" +
-        "3. Poll GET ZYK_WEBHOOK_BASE/slack/pending/<correlationId> every 3s (same endpoint as Slack)\n" +
-        "4. User answers in the Zyk dashboard — response arrives via the polling endpoint\n" +
-        "Example (retries: 0, timeout: '4h' required on polling task):\n" +
+        "\n\nHUMAN INTERACTION PATTERN — use workflow.durableTask() for ANY step that waits for user input (dashboard or Slack). " +
+        "This is the ONLY correct pattern — never use polling loops or retries: 0 hacks.\n" +
+        "The step is suspended durably in Hatchet's DB and resumed automatically when the user responds. Worker thread is freed while waiting.\n" +
+        "\nNATIVE INTERACTIONS (dashboard) — example:\n" +
         "```typescript\n" +
-        "const correlationId = `question-${Date.now()}`;\n" +
-        "const base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100';\n" +
-        "await fetch(`${base}/interact/ask`, {\n" +
-        "  method: 'POST', headers: { 'Content-Type': 'application/json' },\n" +
-        "  body: JSON.stringify({ correlationId, message: 'Do you approve?', options: ['yes', 'no'] }),\n" +
+        "const askUser = workflow.durableTask({\n" +
+        "  name: 'ask-user',\n" +
+        "  executionTimeout: '24h',\n" +
+        "  fn: async (_input, ctx) => {\n" +
+        "    const correlationId = `question-${Date.now()}`;\n" +
+        "    const base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100';\n" +
+        "    await fetch(`${base}/interact/ask`, {\n" +
+        "      method: 'POST', headers: { 'Content-Type': 'application/json' },\n" +
+        "      body: JSON.stringify({ correlationId, workflowName: 'my-workflow', message: 'Do you approve?', options: ['yes', 'no'] }),\n" +
+        "    });\n" +
+        "    await ctx.log(`Waiting for user input (id=${correlationId})`);\n" +
+        "    const result = await ctx.waitForEvent(correlationId);\n" +
+        "    await ctx.log(`User answered: ${result.action}`);\n" +
+        "    return { answer: result.action as string };\n" +
+        "  },\n" +
         "});\n" +
-        "const deadline = Date.now() + 4 * 60 * 60 * 1000;\n" +
-        "while (Date.now() < deadline) {\n" +
-        "  const r = await fetch(`${base}/slack/pending/${encodeURIComponent(correlationId)}`);\n" +
-        "  const d = await r.json() as { pending: boolean; action?: string };\n" +
-        "  if (!d.pending && d.action) return { answer: d.action };\n" +
-        "  await new Promise(r => setTimeout(r, 3000));\n" +
-        "}\n" +
-        "throw new Error('Timed out');\n" +
         "```\n" +
-        "\n\nSLACK BUTTON INTERACTIONS — mandatory pattern (NEVER use waitForEvent or Hatchet events for Slack):\n" +
-        "1. Post a Slack message with an actions block. Set block_id to a unique correlationId (e.g. `approval-${Date.now()}`).\n" +
-        "2. Poll GET $ZYK_WEBHOOK_BASE/slack/pending/<correlationId> every 3s.\n" +
-        "3. Response is { pending: true } while waiting, or { pending: false, action: 'button_action_id', userId: '...' } once clicked.\n" +
-        "Example poll loop (retries: 0 AND timeout: '4h' on polling tasks — REQUIRED to prevent Hatchet from killing the task):\n" +
+        "\nSLACK BUTTON INTERACTIONS — example:\n" +
         "```typescript\n" +
-        "// task must have retries: 0, timeout: '4h'\n" +
-        "const base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100';\n" +
-        "const deadline = Date.now() + 60 * 60 * 1000;\n" +
-        "while (Date.now() < deadline) {\n" +
-        "  const r = await fetch(`${base}/slack/pending/${encodeURIComponent(correlationId)}`);\n" +
-        "  const d = await r.json() as { pending: boolean; action?: string };\n" +
-        "  if (!d.pending && d.action) return { action: d.action };\n" +
-        "  await new Promise(r => setTimeout(r, 3000));\n" +
-        "}\n" +
+        "const waitForApproval = workflow.durableTask({\n" +
+        "  name: 'wait-for-approval',\n" +
+        "  executionTimeout: '24h',\n" +
+        "  fn: async (_input, ctx) => {\n" +
+        "    const correlationId = `approval-${Date.now()}`;\n" +
+        "    // post Slack message with block_id: correlationId on the actions block\n" +
+        "    await ctx.log(`Waiting for Slack approval (id=${correlationId})`);\n" +
+        "    const result = await ctx.waitForEvent(correlationId);\n" +
+        "    await ctx.log(`Decision: ${result.action} by ${result.userId}`);\n" +
+        "    return { approved: result.action === 'approve', action: result.action as string };\n" +
+        "  },\n" +
+        "});\n" +
         "```\n" +
+        "RULES: (1) Always use workflow.durableTask() — never workflow.task() — for steps that wait for input. " +
+        "(2) ctx.waitForEvent(correlationId) suspends the step durably — no polling, no timeout tricks. " +
+        "(3) executionTimeout: '24h' sets the maximum wait time. " +
+        "(4) Still call POST /interact/ask for native interactions so the question appears in the Zyk dashboard. " +
+        "(5) For Slack: set block_id on the actions block to the correlationId — that's what Zyk uses to match the click.\n" +
         "\n\nMANDATORY CODE TEMPLATE (copy this structure exactly — wrong patterns cause runtime errors):\n" +
         "```typescript\n" +
         'import { Hatchet } from "@hatchet-dev/typescript-sdk"; // named import — NOT default\n' +
@@ -144,6 +148,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(7) Use process.env.VAR for secrets. " +
         "(8) Use fetch() for HTTP — no extra packages. " +
         "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
+        "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",
       inputSchema: {

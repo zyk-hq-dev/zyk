@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hatchet-dev/typescript-sdk": "^1.12.1",
+    "@hatchet-dev/typescript-sdk": "^1.17.2",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "esbuild": "^0.27.3",
     "tsx": "^4.19.0",
