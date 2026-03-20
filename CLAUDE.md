@@ -307,6 +307,52 @@ workflow.task({
 
 ---
 
+### Anthropic / Claude API integration
+
+When a workflow needs AI-based classification, summarisation, or any LLM call, call the Anthropic API directly. **Always include the `x-api-key` header with `process.env.ANTHROPIC_API_KEY`.**
+
+```typescript
+workflow.task({
+  name: "assess-with-claude",
+  retries: 3,
+  fn: async (input: { text: string }, ctx) => {
+    await ctx.log("Calling Claude API");
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        messages: [{ role: "user", content: input.text }],
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Anthropic API error ${res.status}: ${text}`);
+    }
+
+    const data = await res.json() as { content: { text: string }[] };
+    const result = data.content[0].text;
+    await ctx.log(`Claude responded: ${result.slice(0, 100)}`);
+    return { result };
+  },
+});
+```
+
+**Rules:**
+- Always use `"x-api-key": process.env.ANTHROPIC_API_KEY ?? ""` — never omit the auth header
+- Always include `"anthropic-version": "2023-06-01"`
+- Default model: `claude-sonnet-4-20250514`
+- Always ask Claude to respond in JSON when you need structured output — include the schema in the prompt
+
+---
+
 ### Slack integration
 
 ```typescript

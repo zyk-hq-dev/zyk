@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getWorkflow, updateWorkflow } from "../hatchet/register.js";
 import { validateWorkflowCode } from "../utils/code-runner.js";
 import { track } from "../lib/zyk-api.js";
-import { patchInteractAskCalls } from "./create-workflow.js";
+import { patchInteractAskCalls, extractEnvVars } from "./create-workflow.js";
 
 export const updateWorkflowSchema = z.object({
   workflow_id: z.string().describe("The workflow ID to update"),
@@ -76,6 +76,15 @@ export async function updateWorkflowTool(input: UpdateWorkflowInput) {
       diagram,
     });
 
+    let effectiveCode = code;
+    if (!effectiveCode && existing.filePath) {
+      try {
+        const { readFileSync } = await import("fs");
+        effectiveCode = readFileSync(existing.filePath, "utf-8");
+      } catch { /* ignore */ }
+    }
+    const envVars = effectiveCode ? extractEnvVars(effectiveCode) : [];
+
     const result: Record<string, unknown> = {
       success: true,
       workflow_id: updated.id,
@@ -83,7 +92,11 @@ export async function updateWorkflowTool(input: UpdateWorkflowInput) {
       description: updated.description,
       trigger: updated.trigger,
       schedule: updated.schedule,
-      message: `Workflow "${updated.name}" updated and worker restarted successfully.`,
+      required_env_vars: envVars,
+      message: `Workflow "${updated.name}" updated and worker restarted successfully.`
+        + (envVars.length > 0
+          ? ` IMPORTANT: tell the user this workflow requires these environment variables to be set in their Railway service: ${envVars.join(", ")}. For each one, briefly explain what it is (e.g. SLACK_BOT_TOKEN = Slack bot token starting with xoxb-).`
+          : ""),
     };
 
     track("workflow_updated");

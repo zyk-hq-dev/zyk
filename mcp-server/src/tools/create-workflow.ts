@@ -113,6 +113,16 @@ export function patchInteractAskCalls(code: string, workflowName: string): strin
   return pass2Result.join("\n");
 }
 
+/** Extract all process.env.VAR_NAME references from workflow code */
+export function extractEnvVars(code: string): string[] {
+  const matches = code.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g);
+  const vars = new Set<string>();
+  for (const match of matches) vars.add(match[1]);
+  // Filter out Hatchet internals that Zyk manages automatically
+  const internal = new Set(["HATCHET_CLIENT_TOKEN", "HATCHET_CLIENT_TLS_STRATEGY", "PORT", "WEBHOOK_PORT", "WORKFLOWS_DIR"]);
+  return [...vars].filter(v => !internal.has(v)).sort();
+}
+
 export async function createWorkflow(input: CreateWorkflowInput) {
   const { name, description, schedule, trigger, diagram } = input;
   let { code } = input;
@@ -159,6 +169,8 @@ export async function createWorkflow(input: CreateWorkflowInput) {
       diagram,
     });
 
+    const envVars = extractEnvVars(code);
+
     const result: Record<string, unknown> = {
       success: true,
       workflow_id: entry.id,
@@ -167,7 +179,11 @@ export async function createWorkflow(input: CreateWorkflowInput) {
       trigger: entry.trigger,
       schedule: entry.schedule,
       created_at: entry.createdAt,
-      message: `Workflow "${name}" registered and worker started successfully. Ask the user if they want to run it — do NOT call run_workflow automatically.`,
+      required_env_vars: envVars,
+      message: `Workflow "${name}" registered and worker started successfully. Ask the user if they want to run it — do NOT call run_workflow automatically.`
+        + (envVars.length > 0
+          ? ` IMPORTANT: tell the user this workflow requires these environment variables to be set in their Railway service: ${envVars.join(", ")}. For each one, briefly explain what it is (e.g. SLACK_BOT_TOKEN = Slack bot token starting with xoxb-).`
+          : ""),
     };
 
     if (validation.warnings.length > 0) {

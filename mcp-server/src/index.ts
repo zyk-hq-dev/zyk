@@ -147,6 +147,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(6) await hatchet.worker(...). " +
         "(7) Use process.env.VAR for secrets. " +
         "(8) Use fetch() for HTTP — no extra packages. " +
+        "(8b) ANTHROPIC API CALLS: always include headers { 'x-api-key': process.env.ANTHROPIC_API_KEY ?? '', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } — NEVER omit x-api-key. Default model: claude-sonnet-4-20250514. " +
         "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
         "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
