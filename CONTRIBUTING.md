@@ -79,15 +79,25 @@ CI runs both on every push and PR.
 - **No default exports** except in workflow files (required by the worker loader)
 - Error paths: throw on non-OK HTTP responses so Hatchet retries automatically
 
+## Ports (local)
+
+| Service | URL |
+|---------|-----|
+| Hatchet UI | http://localhost:8888 |
+| Hatchet REST API | http://localhost:8080 |
+| Hatchet gRPC | localhost:7077 |
+| Zyk MCP server + dashboard | http://localhost:3100 |
+
+Hatchet UI credentials: `admin@example.com` / `Admin123!!`
+
 ## Project structure
 
 ```
 mcp-server/src/
-  index.ts           MCP server entry point and tool registration
+  index.ts           MCP server entry point and tool definitions
   tools/             One file per MCP tool
   hatchet/           Hatchet client, workflow registry, worker management
-  server/            Express webhook + dashboard server
-  utils/             Code runner (esbuild transpilation) and diagram storage
+  server/            HTTP server — webhook, dashboard, interactions
 ```
 
 ## Submitting a PR
