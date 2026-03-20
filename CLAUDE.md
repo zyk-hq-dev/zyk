@@ -565,9 +565,10 @@ const askUser = workflow.durableTask({
 
     // Suspend durably — resumes automatically when user answers
     const result = await ctx.waitForEvent(correlationId);
+    const answer = (result.action as string).toLowerCase(); // normalize — always compare lowercase
 
-    await ctx.log(`User answered: ${result.action}`);
-    return { answer: result.action as string };
+    await ctx.log(`User answered: ${answer}`);
+    return { answer };
   },
 });
 ```

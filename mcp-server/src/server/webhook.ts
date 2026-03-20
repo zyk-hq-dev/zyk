@@ -1319,7 +1319,7 @@ async function handleRequest(
       return;
     }
     consumePendingQuestion(correlationId);
-    const payload = { action, userId: "dashboard-user", timestamp: new Date().toISOString() };
+    const payload = { action: action.toLowerCase(), userId: "dashboard-user", timestamp: new Date().toISOString() };
     // Keep in-memory store for legacy polling workflows
     pendingInteractions.set(correlationId, payload);
     // Push Hatchet event for durable-task workflows using ctx.waitForEvent()
@@ -1387,7 +1387,7 @@ export function storeInteractionAnswer(correlationId: string, action: string): v
     timestamp: new Date().toISOString(),
   });
   // Also push a Hatchet event for durable-task workflows using ctx.waitForEvent()
-  pushHatchetEvent(correlationId, { action, userId: "claude-user" }).catch(() => {});
+  pushHatchetEvent(correlationId, { action: action.toLowerCase(), userId: "claude-user" }).catch(() => {});
 }
 
 // ── Server startup ────────────────────────────────────────────────────────────
