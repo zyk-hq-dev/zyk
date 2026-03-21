@@ -12,7 +12,7 @@ No connectors to configure. No DSL to learn. Just describe it — the diagram bu
 
 Open source, self-hosted on Railway.
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/zyk-hq/zyk)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/0vootV?referralCode=nLaNid&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
 **Questions or feedback** — reach out at [hello@zyk.dev](mailto:hello@zyk.dev).
 
