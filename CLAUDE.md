@@ -338,7 +338,9 @@ workflow.task({
     }
 
     const data = await res.json() as { content: { text: string }[] };
-    const result = data.content[0].text;
+    // Strip markdown code fences — Claude sometimes wraps JSON in ```json ... ``` despite instructions
+    const rawText = data.content[0].text.replace(/^```(?:json)?\s*/m, "").replace(/\s*```$/m, "").trim();
+    const result = rawText;
     await ctx.log(`Claude responded: ${result.slice(0, 100)}`);
     return { result };
   },
@@ -521,15 +523,17 @@ const waitForApproval = workflow.durableTask({
     const { correlationId } = await ctx.parentOutput(requestApproval) as { correlationId: string };
     await ctx.log(`Waiting for approval (id=${correlationId})`);
     const result = await ctx.waitForEvent(correlationId);
-    await ctx.log(`Decision: ${result.action} by ${result.userId}`);
-    return { approved: result.action === "approve", action: result.action as string, userId: result.userId as string };
+    // Hatchet wraps event data in result.payload — always parse it
+    const eventData = JSON.parse(result.payload as string) as { action: string; userId: string };
+    await ctx.log(`Decision: ${eventData.action} by ${eventData.userId}`);
+    return { approved: eventData.action === "approve", action: eventData.action, userId: eventData.userId };
   },
 });
 ```
 
 **Rules:**
 - Always set `block_id` on the `actions` block — that's the correlationId Zyk uses to match the click
-- Each button needs a unique `action_id` — that's what comes back in `result.action`
+- Each button needs a unique `action_id` — that's what comes back in `eventData.action` after parsing `result.payload`
 - Use `workflow.durableTask()` — never `workflow.task()` — for the waiting step
 - `executionTimeout` sets the maximum wait (e.g. `"24h"`)
 - Slack requires a public HTTPS URL to deliver button clicks. For local development use [ngrok](https://ngrok.com): run `ngrok http 3100` and set the Slack app's **Interactivity Request URL** to `https://<your-ngrok-url>/slack/interactions`
@@ -565,7 +569,9 @@ const askUser = workflow.durableTask({
 
     // Suspend durably — resumes automatically when user answers
     const result = await ctx.waitForEvent(correlationId);
-    const answer = (result.action as string).toLowerCase(); // normalize — always compare lowercase
+    // Hatchet wraps event data in result.payload — always parse it
+    const eventData = JSON.parse(result.payload as string) as { action: string };
+    const answer = eventData.action.toLowerCase(); // normalize — always compare lowercase
 
     await ctx.log(`User answered: ${answer}`);
     return { answer };
