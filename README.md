@@ -1,4 +1,4 @@
-# Zyk — Open-Source Workflow Automation
+# Zyk — Claude-native workflow automation
 
 > **Alpha coming soon.** This repository is not yet released. Star it to follow along — we'll be opening access shortly.
 > Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
