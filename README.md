@@ -244,16 +244,17 @@ To deploy an example, paste its code into Claude and ask:
 
 ---
 
-## vs. Zapier / n8n / Make / Temporal
+## vs. Zapier / n8n / Make
 
-| | Zapier/Make | n8n | Serverless functions | Temporal | **Zyk** |
-|---|---|---|---|---|---|
-| Interface | Visual UI | Visual UI | Code | Code | **Conversation** |
-| Connectors | Pre-built only | Pre-built only | DIY | DIY | **Any API Claude knows** |
-| Durability | Basic | Basic | No (timeout-bound) | Yes | **Yes (Hatchet)** |
-| Human-in-the-loop | Workarounds | Workarounds | Requires split architecture | Yes | **Yes, wait days if needed** |
-| Self-host | Limited | Yes | Cloud-only | Complex | **One click on Railway** |
-| Custom logic | Limited | Limited | Full code | Full code | **Full TypeScript** |
+| | n8n / Zapier / Make | **Zyk** |
+|---|---|---|
+| Interface | Web UI, node editor | **Claude via MCP** |
+| AI role | Bolted-on assistant | **Claude writes, deploys and operates workflows** |
+| Connectors | Pre-built only | **Any API Claude knows** |
+| Durable execution | Breaks silently on failure | **Hatchet engine, checkpointed and auto-retry** |
+| Human-in-the-loop | Not natively supported | **Pause, ask, resume built in** |
+| Self-host | n8n yes, others no | **One-click Railway deploy, MIT license** |
+| Output | JSON config / node graph | **Real TypeScript you can read and extend** |
 
 ---
 
