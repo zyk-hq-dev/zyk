@@ -65,10 +65,7 @@ Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks
 
 `npx` runs a tiny local stdio/HTTP bridge. Node.js must be installed, nothing else.
 
-| Platform | Config path |
-|----------|-------------|
-| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
-| Windows | `%APPDATA%\Roaming\Claude\claude_desktop_config.json` |
+The easiest way to find the config is inside Claude Desktop: **Settings > Developer > Local MCP Servers > Edit Config**. This opens the correct file regardless of how Claude was installed.
 
 Fully quit and restart Claude after saving.
 
