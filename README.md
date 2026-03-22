@@ -174,7 +174,6 @@ Common secrets:
 | `ANTHROPIC_API_KEY` | Required for workflows that use Claude to classify, summarize, or make decisions. Get yours at [console.anthropic.com](https://console.anthropic.com). |
 | `SLACK_BOT_TOKEN` | `xoxb-...` |
 | `SLACK_SIGNING_SECRET` | From Slack app settings. Enables signature verification on `/slack/interactions`. |
-| `STRIPE_SECRET_KEY` | `sk_live_...` |
 | `GITHUB_TOKEN` | `ghp_...` |
 
 Any variable you add is automatically available in generated workflow code.
