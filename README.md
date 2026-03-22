@@ -43,7 +43,7 @@ During setup, Railway will ask you to set one variable:
 
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
-Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks like `https://<zyk-mcp>.up.railway.app`.
+Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks like `https://<zyk>.up.railway.app`.
 
 ### Step 2 — Connect Claude
 
@@ -54,7 +54,7 @@ Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks
   "mcpServers": {
     "zyk": {
       "command": "npx",
-      "args": ["-y", "zyk-mcp", "--proxy", "https://<zyk-mcp>.up.railway.app/mcp"],
+      "args": ["-y", "zyk-mcp", "--proxy", "https://<zyk>.up.railway.app/mcp"],
       "env": {
         "ZYK_API_KEY": "your-secret-key"
       }
@@ -79,7 +79,7 @@ Fully quit and restart Claude after saving.
   "mcpServers": {
     "zyk": {
       "type": "http",
-      "url": "https://<zyk-mcp>.up.railway.app/mcp",
+      "url": "https://<zyk>.up.railway.app/mcp",
       "headers": {
         "Authorization": "Bearer your-secret-key"
       }
@@ -125,13 +125,16 @@ Zyk MCP Server  (Railway)
 
 **Human-in-the-loop:** workflows use `workflow.durableTask()` + `ctx.waitForEvent()` to pause durably in Hatchet's DB. When a user responds (via the Zyk dashboard or Slack), Zyk pushes a Hatchet event and the step resumes exactly where it left off. No polling loops, survives server restarts.
 
-**Slack interactions:** set the Slack app's Interactivity Request URL to `https://<zyk-mcp>.up.railway.app/slack/interactions`.
+**Slack interactions:** set the Slack app's Interactivity Request URL to `https://<zyk>.up.railway.app/slack/interactions`.
 
 ---
 
 ## Dashboard
 
-Every Zyk deployment comes with a built-in dashboard at `https://<zyk-mcp>.up.railway.app`.
+Every Zyk deployment comes with a built-in dashboard. To find your URLs, click the service in the Railway project, then go to **Settings > Networking > Public URL**:
+
+- **Zyk dashboard + MCP endpoint** — public URL of the `zyk` service
+- **Hatchet UI** — public URL of the `hatchet-lite` service
 
 - **Workflow list** — see all registered workflows and their live worker status
 - **Visual diagram** — each workflow renders as a flowchart so you can see the steps at a glance
@@ -162,7 +165,7 @@ The dashboard is protected by your `ZYK_API_KEY`.
 Webhook trigger (no Claude required):
 
 ```
-POST https://<zyk-mcp>.up.railway.app/webhook/<workflow_id>
+POST https://<zyk>.up.railway.app/webhook/<workflow_id>
 Content-Type: application/json
 
 { ...your params... }
@@ -172,7 +175,7 @@ Content-Type: application/json
 
 ## Adding secrets
 
-Add environment variables to the `zyk-mcp` Railway service. Generated workflows access them via `process.env.VAR_NAME`.
+Add environment variables to the `zyk` Railway service. Generated workflows access them via `process.env.VAR_NAME`.
 
 Common secrets:
 
@@ -192,7 +195,7 @@ Any variable you add is automatically available in generated workflow code.
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ZYK_API_KEY` | Recommended | Protects your MCP endpoint and dashboard. Set the same value in your Claude config. |
-| `HATCHET_HOST_PORT` | Yes | gRPC address: `hatchet-engine.railway.internal:7077` |
+| `HATCHET_HOST_PORT` | Yes | gRPC address: `hatchet-lite.railway.internal:7077` |
 | `HATCHET_CLIENT_HOST_PORT` | Yes | Same as `HATCHET_HOST_PORT` |
 | `HATCHET_CLIENT_TOKEN` | No | Auto-generated on first boot and cached to the persistent volume. |
 | `HATCHET_REST_URL` | No | Hatchet REST URL (default: derived from `HATCHET_HOST_PORT`) |
@@ -216,7 +219,7 @@ Any variable you add is automatically available in generated workflow code.
 
 - Confirm the URL in your MCP config matches your Railway deployment
 - Check that the Railway service is healthy (green status)
-- Open `https://<zyk-mcp>.up.railway.app/api/workflows` in a browser. It should return `[]`.
+- Open `https://<zyk>.up.railway.app/api/workflows` in a browser. It should return `[]`.
 
 ### "Worker failed to start" on create_workflow
 
@@ -231,7 +234,7 @@ Give it 30-60 seconds on first boot (database migration). If it stays unhealthy,
 
 ### Workflows lost after redeploy
 
-The persistent volume isn't attached. Go to the zyk-mcp service, then Volumes, then add a volume at `/app/workflows`.
+The persistent volume isn't attached. Go to the zyk service, then Volumes, then add a volume at `/app/workflows`.
 
 ---
 
