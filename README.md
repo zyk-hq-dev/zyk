@@ -133,8 +133,8 @@ Zyk MCP Server  (Railway)
 
 Every Zyk deployment comes with a built-in dashboard. To find your URLs, click the service in the Railway project, then go to **Settings > Networking > Public URL**:
 
-- **Zyk dashboard + MCP endpoint** — public URL of the `zyk` service
-- **Hatchet UI** — public URL of the `hatchet-lite` service
+- **Zyk dashboard + MCP endpoint** — public URL of the `zyk` service, e.g. `https://<zyk>.up.railway.app`
+- **Hatchet UI** — public URL of the `hatchet-lite` service, e.g. `https://<hatchet-lite>.up.railway.app`
 
 - **Workflow list** — see all registered workflows and their live worker status
 - **Visual diagram** — each workflow renders as a flowchart so you can see the steps at a glance
