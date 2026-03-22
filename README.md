@@ -15,8 +15,6 @@ No connectors to configure. No DSL to learn. Just describe it — the diagram bu
 
 Open source, self-hosted on Railway.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/0vootV?referralCode=nLaNid&utm_medium=integration&utm_source=template&utm_campaign=generic)
-
 **Learn more** — [zyk.dev](https://zyk.dev) · **Questions or feedback** — [hello@zyk.dev](mailto:hello@zyk.dev)
 
 ---
@@ -35,69 +33,25 @@ Open source, self-hosted on Railway.
 
 ---
 
-## Deploy on Railway (~10 minutes)
+## Get started
 
-You'll create three services in a Railway project: PostgreSQL, Hatchet Engine, and the Zyk MCP Server.
+### Step 1 — Deploy on Railway
 
-### Step 1 — Create a Railway project
+Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and the Zyk MCP Server automatically.
 
-1. Go to [railway.app](https://railway.app) and create a new project.
-2. Add a **PostgreSQL** database (the built-in plugin — one click).
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/0vootV?referralCode=nLaNid&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-### Step 2 — Deploy Hatchet Engine
-
-Add a new service → **Deploy from Docker image**:
-
-```
-ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
-```
-
-Set these environment variables:
+During setup, Railway will ask you to set one variable:
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
-| `SERVER_AUTH_COOKIE_SECRETS` | Two random hex strings, space-separated (run `openssl rand -hex 32` twice) |
-| `SERVER_AUTH_COOKIE_DOMAIN` | Your Hatchet Railway domain, e.g. `hatchet-engine.up.railway.app` |
-| `SERVER_GRPC_BIND_ADDRESS` | `0.0.0.0` |
-| `SERVER_GRPC_PORT` | `7077` |
-| `SERVER_GRPC_BROADCAST_ADDRESS` | `hatchet-engine.railway.internal:7077` |
-| `SERVER_GRPC_INSECURE` | `t` |
-| `SERVER_AUTH_SET_EMAIL_VERIFIED` | `t` |
-| `SERVER_AUTH_COOKIE_INSECURE` | `t` |
+| `ZYK_API_KEY` | Any secret string you choose — protects your MCP endpoint and dashboard |
 
-Expose port **8080** (HTTP / REST API + UI) and enable a **TCP proxy on port 7077** (gRPC — workers connect here).
+Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
-Wait until the Hatchet service shows healthy (~30 seconds).
+Once deployed, copy your Zyk MCP Server URL from the Railway dashboard — it looks like `https://<zyk-mcp>.up.railway.app`.
 
-### Step 3 — Deploy the Zyk MCP Server
-
-Add another service → **Deploy from GitHub repo** → select this repo → set the **root directory** to `mcp-server/`.
-
-Environment variables:
-
-| Variable | Value |
-|----------|-------|
-| `HATCHET_HOST_PORT` | `hatchet-engine.railway.internal:7077` |
-| `HATCHET_CLIENT_HOST_PORT` | `hatchet-engine.railway.internal:7077` |
-| `HATCHET_REST_URL` | `http://hatchet-engine.railway.internal:8080` |
-| `ZYK_API_KEY` | Any secret string — protects your MCP endpoint and dashboard |
-
-`HATCHET_CLIENT_TOKEN` is **not required** — Zyk auto-generates one on first boot. Add any workflow secrets you need now (see [Adding secrets](#adding-secrets)).
-
-### Step 4 — Add a persistent volume
-
-In the Railway dashboard for the **zyk-mcp** service, go to **Volumes** → add a volume mounted at:
-
-```
-/app/workflows
-```
-
-This persists your workflow code and registry across deploys. Without it, all workflows are lost on every redeploy.
-
-### Step 5 — Connect Claude
-
-Your Zyk MCP server is now live at `https://<zyk-mcp>.up.railway.app`.
+### Step 2 — Connect Claude
 
 **Claude Desktop** — add to `claude_desktop_config.json`:
 
@@ -115,7 +69,7 @@ Your Zyk MCP server is now live at `https://<zyk-mcp>.up.railway.app`.
 }
 ```
 
-`npx` downloads and runs a tiny local bridge — Node.js must be installed, but nothing else.
+`npx` runs a tiny local stdio↔HTTP bridge — Node.js must be installed, nothing else.
 
 | Platform | Config path |
 |----------|-------------|
@@ -140,18 +94,18 @@ Fully quit and restart Claude after saving.
 }
 ```
 
-### Step 6 — Verify it works
+### Step 3 — Verify it works
 
 Ask Claude: *"List my workflows"*
 
-Expected:
+Expected response:
 ```
 No workflows registered yet. Use create_workflow to create your first workflow.
 ```
 
-Then: *"Create a simple hello-world workflow that logs a greeting with a timestamp"*
+Then try: *"Create a workflow that posts a daily summary to Slack every morning"* — and watch it build.
 
-Once created, ask Claude to run it and check the status. You should see the run complete in both Claude and the Hatchet UI.
+> **Running locally?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for local Docker Compose setup.
 
 ---
 
