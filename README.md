@@ -33,7 +33,7 @@ Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows 
 
 Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and the Zyk MCP Server automatically.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/0vootV?referralCode=nLaNid&utm_medium=integration&utm_source=template&utm_campaign=generic)
+[![Deploy on Railway](https://railway.com/button.svg)](#)
 
 During setup, Railway will ask you to set one variable:
 
