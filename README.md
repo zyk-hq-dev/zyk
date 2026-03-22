@@ -9,9 +9,9 @@ We're betting on two things: **MCP-ready AI as the interface** for building and 
 
 You describe a workflow in plain English through Claude. Zyk generates structured TypeScript and runs it on a durable execution engine. Retries, scheduling, and error handling built in by design.
 
-No connectors to configure. No DSL to learn. Just describe it — the diagram builds itself.
+No connectors to configure. No DSL to learn. Just describe it, the diagram builds itself.
 
-**What durable means in practice:** a workflow can fire on a Slack message, create a GitHub issue, post Approve/Reject buttons back to Slack, and wait days for a human to respond — then resume and close the loop automatically. No split endpoints, no manual state management.
+**What durable means in practice:** a workflow can fire on a Slack message, create a GitHub issue, post Approve/Reject buttons back to Slack, and wait days for a human to respond, then resume and close the loop automatically. No split endpoints, no manual state management.
 
 Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows are plain TypeScript files you own. If you ever outgrow Zyk, you can run them directly on Hatchet without changing a line of code.
 
@@ -21,15 +21,15 @@ Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows 
 
 ## Why this stack
 
-**Claude** is becoming the daily interface for knowledge workers. Instead of building a separate UI, Zyk plugs into it — builders describe automations in conversation, Claude generates the code, Zyk deploys it. No new tool to learn.
+**Claude** is becoming the daily interface for knowledge workers. Instead of building a separate UI, Zyk plugs into it. Builders describe automations in conversation, Claude generates the code, Zyk deploys it. No new tool to learn.
 
 **Hatchet over Temporal?** Single Docker image (Hatchet Lite), Postgres-only dependency, no Kafka or Cassandra, beautiful built-in monitoring UI. Temporal is powerful but complex to self-host. Hatchet is one `docker compose up`. That matters for small teams.
 
-**Real TypeScript over a DSL.** Previous automation tools lock you into their connector library. If the connector doesn't exist, you're blocked. Claude knows thousands of APIs from training — it writes the HTTP calls directly. No connector maintenance, no limitations.
+**Real TypeScript over a DSL.** Previous automation tools lock you into their connector library. If the connector doesn't exist, you're blocked. Claude knows thousands of APIs from training, so it writes the HTTP calls directly. No connector maintenance, no limitations.
 
-**Durable execution over serverless functions.** Serverless functions have hard execution timeouts — typically 10–15 minutes. That's fine for a webhook handler, but it makes human-in-the-loop workflows impossible to build correctly. Hatchet workflows can pause mid-execution, wait days for a human signal, and resume exactly where they left off. No queues, no external state store, no split endpoints.
+**Durable execution over serverless functions.** Serverless functions have hard execution timeouts, typically 10-15 minutes. That's fine for a webhook handler, but it makes human-in-the-loop workflows impossible to build correctly. Hatchet workflows can pause mid-execution, wait days for a human signal, and resume exactly where they left off. No queues, no external state store, no split endpoints.
 
-**Railway over local Docker.** No Docker required on your machine. You get a public HTTPS URL automatically — which means Slack interactions work out of the box without ngrok. Env vars are managed in the Railway dashboard. One URL to paste into Claude.
+**Railway over local Docker.** No Docker required on your machine. You get a public HTTPS URL automatically, which means Slack interactions work out of the box without ngrok. Env vars are managed in the Railway dashboard. One URL to paste into Claude.
 
 ---
 
@@ -45,11 +45,11 @@ During setup, Railway will ask you to set one variable:
 
 | Variable | Value |
 |----------|-------|
-| `ZYK_API_KEY` | Any secret string you choose — protects your MCP endpoint and dashboard |
+| `ZYK_API_KEY` | Any secret string you choose. Protects your MCP endpoint and dashboard. |
 
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
-Once deployed, copy your Zyk MCP Server URL from the Railway dashboard — it looks like `https://<zyk-mcp>.up.railway.app`.
+Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks like `https://<zyk-mcp>.up.railway.app`.
 
 ### Step 2 — Connect Claude
 
@@ -69,7 +69,7 @@ Once deployed, copy your Zyk MCP Server URL from the Railway dashboard — it lo
 }
 ```
 
-`npx` runs a tiny local stdio↔HTTP bridge — Node.js must be installed, nothing else.
+`npx` runs a tiny local stdio/HTTP bridge. Node.js must be installed, nothing else.
 
 | Platform | Config path |
 |----------|-------------|
@@ -103,7 +103,7 @@ Expected response:
 No workflows registered yet. Use create_workflow to create your first workflow.
 ```
 
-Then try: *"Create a workflow that posts a daily summary to Slack every morning"* — and watch it build.
+Then try: *"Create a workflow that posts a daily summary to Slack every morning"* and watch it build.
 
 > **Running locally?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for local Docker Compose setup.
 
@@ -120,16 +120,16 @@ Zyk MCP Server  (Railway)
     |-- /app/workflows/registry.json   workflow registry
     +-- worker subprocess per workflow
             |  gRPC
-        Hatchet Engine  (Railway — :8080 UI, :7077 gRPC)
+        Hatchet Engine  (Railway - :8080 UI, :7077 gRPC)
             |
-        PostgreSQL  (Railway — run history, scheduling, durable state)
+        PostgreSQL  (Railway - run history, scheduling, durable state)
 ```
 
 **Worker lifecycle:** each worker runs as a child process, connects to Hatchet via gRPC, and waits for work. Workers auto-restart on crash and are restored when the MCP server restarts.
 
 **Scheduling:** cron expressions live inside the workflow code (`on: { cron: "0 8 * * *" }`). Hatchet owns scheduling entirely.
 
-**Human-in-the-loop:** workflows use `workflow.durableTask()` + `ctx.waitForEvent()` to pause durably in Hatchet's DB. When a user responds (via the Zyk dashboard or Slack), Zyk pushes a Hatchet event and the step resumes exactly where it left off — no polling loops, survives server restarts.
+**Human-in-the-loop:** workflows use `workflow.durableTask()` + `ctx.waitForEvent()` to pause durably in Hatchet's DB. When a user responds (via the Zyk dashboard or Slack), Zyk pushes a Hatchet event and the step resumes exactly where it left off. No polling loops, survives server restarts.
 
 **Slack interactions:** set the Slack app's Interactivity Request URL to `https://<zyk-mcp>.up.railway.app/slack/interactions`.
 
@@ -172,7 +172,7 @@ Common secrets:
 | Variable | Description |
 |----------|-------------|
 | `SLACK_BOT_TOKEN` | `xoxb-...` |
-| `SLACK_SIGNING_SECRET` | From Slack app settings — enables signature verification on `/slack/interactions` |
+| `SLACK_SIGNING_SECRET` | From Slack app settings. Enables signature verification on `/slack/interactions`. |
 | `STRIPE_SECRET_KEY` | `sk_live_...` |
 | `GITHUB_TOKEN` | `ghp_...` |
 
@@ -209,7 +209,7 @@ Any variable you add is automatically available in generated workflow code.
 
 - Confirm the URL in your MCP config matches your Railway deployment
 - Check that the Railway service is healthy (green status)
-- Open `https://<zyk-mcp>.up.railway.app/api/workflows` in a browser — it should return `[]`
+- Open `https://<zyk-mcp>.up.railway.app/api/workflows` in a browser. It should return `[]`.
 
 ### "Worker failed to start" on create_workflow
 
@@ -220,11 +220,11 @@ The worker subprocess couldn't connect to Hatchet. Check:
 
 ### Hatchet service is unhealthy
 
-Give it 30–60 seconds on first boot (database migration). If it stays unhealthy, check Railway logs — the most common cause is `DATABASE_URL` not set correctly.
+Give it 30-60 seconds on first boot (database migration). If it stays unhealthy, check Railway logs. The most common cause is `DATABASE_URL` not set correctly.
 
 ### Workflows lost after redeploy
 
-The persistent volume isn't attached. Go to the zyk-mcp service → Volumes → add a volume at `/app/workflows`.
+The persistent volume isn't attached. Go to the zyk-mcp service, then Volumes, then add a volume at `/app/workflows`.
 
 ---
 
@@ -234,9 +234,9 @@ See [`examples/`](./examples):
 
 | File | What it does | Trigger | Requires |
 |------|-------------|---------|----------|
-| [`daily-revenue-report.ts`](./examples/daily-revenue-report.ts) | Fetch Stripe revenue → post to Slack | Schedule (8 AM daily) | `STRIPE_SECRET_KEY`, `SLACK_BOT_TOKEN` |
+| [`daily-revenue-report.ts`](./examples/daily-revenue-report.ts) | Fetch Stripe revenue, post to Slack | Schedule (8 AM daily) | `STRIPE_SECRET_KEY`, `SLACK_BOT_TOKEN` |
 | [`new-user-onboarding.ts`](./examples/new-user-onboarding.ts) | Welcome email + Notion page + Slack notification on signup | Webhook | `RESEND_API_KEY`, `NOTION_TOKEN`, `SLACK_BOT_TOKEN` |
-| [`api-error-monitor.ts`](./examples/api-error-monitor.ts) | Poll API health → PagerDuty + Slack on failure | Schedule (every 5 min) | `API_HEALTH_URL`, `PAGERDUTY_ROUTING_KEY`, `SLACK_BOT_TOKEN` |
+| [`api-error-monitor.ts`](./examples/api-error-monitor.ts) | Poll API health, PagerDuty + Slack on failure | Schedule (every 5 min) | `API_HEALTH_URL`, `PAGERDUTY_ROUTING_KEY`, `SLACK_BOT_TOKEN` |
 
 To deploy an example, paste its code into Claude and ask:
 
@@ -251,8 +251,8 @@ To deploy an example, paste its code into Claude and ask:
 | Interface | Visual UI | Visual UI | Code | Code | **Conversation** |
 | Connectors | Pre-built only | Pre-built only | DIY | DIY | **Any API Claude knows** |
 | Durability | Basic | Basic | No (timeout-bound) | Yes | **Yes (Hatchet)** |
-| Human-in-the-loop | Workarounds | Workarounds | Requires split architecture | Yes | **Yes — wait days if needed** |
-| Self-host | Limited | Yes | Cloud-only | Complex | **One command on Railway** |
+| Human-in-the-loop | Workarounds | Workarounds | Requires split architecture | Yes | **Yes, wait days if needed** |
+| Self-host | Limited | Yes | Cloud-only | Complex | **One click on Railway** |
 | Custom logic | Limited | Limited | Full code | Full code | **Full TypeScript** |
 
 ---
