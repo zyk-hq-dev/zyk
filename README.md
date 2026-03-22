@@ -1,5 +1,8 @@
 # Zyk — Open-Source Workflow Automation
 
+> **Alpha coming soon.** This repository is not yet released. Star it to follow along — we'll be opening access shortly.
+> Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
+
 **Describe it. Run it. Done.**
 
 We're betting on two things: **MCP-ready AI as the interface** for building and running workflows, and **durable execution as the engine** for making them reliable. Zyk is what happens when you combine them.
@@ -14,7 +17,7 @@ Open source, self-hosted on Railway.
 
 [![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/0vootV?referralCode=nLaNid&utm_medium=integration&utm_source=template&utm_campaign=generic)
 
-**Questions or feedback** — reach out at [hello@zyk.dev](mailto:hello@zyk.dev).
+**Learn more** — [zyk.dev](https://zyk.dev) · **Questions or feedback** — [hello@zyk.dev](mailto:hello@zyk.dev)
 
 ---
 
