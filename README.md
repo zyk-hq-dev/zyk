@@ -129,6 +129,19 @@ Zyk MCP Server  (Railway)
 
 ---
 
+## Dashboard
+
+Every Zyk deployment comes with a built-in dashboard at `https://<zyk-mcp>.up.railway.app`.
+
+- **Workflow list** — see all registered workflows and their live worker status
+- **Visual diagram** — each workflow renders as a flowchart so you can see the steps at a glance
+- **Task list** — pending human-in-the-loop questions appear here. Answer them with a click, no Claude required
+- **Hatchet UI** — link through to the full Hatchet monitoring UI for run history, logs, and step traces
+
+The dashboard is protected by your `ZYK_API_KEY`.
+
+---
+
 ## MCP Tools
 
 | Tool | Description |
