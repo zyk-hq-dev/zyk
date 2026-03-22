@@ -3,15 +3,9 @@
 > **Alpha coming soon.** This repository is not yet released. Star it to follow along — we'll be opening access shortly.
 > Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
 
-**Describe it. Run it. Done.**
+**Built for Claude, not bolted onto it.**
 
-We're betting on two things: **MCP-ready AI as the interface** for building and running workflows, and **durable execution as the engine** for making them reliable. Zyk is what happens when you combine them.
-
-You describe a workflow in plain English through Claude. Zyk generates structured TypeScript and runs it on a durable execution engine. Retries, scheduling, and error handling built in by design.
-
-No connectors to configure. No DSL to learn. Just describe it, the diagram builds itself.
-
-**What durable means in practice:** a workflow can fire on a Slack message, create a GitHub issue, post Approve/Reject buttons back to Slack, and wait days for a human to respond, then resume and close the loop automatically. No split endpoints, no manual state management.
+Most workflow tools add AI as an afterthought. Zyk is different: you create, manage, and operate workflows entirely through conversation. Describe what you want, Claude generates real TypeScript and deploys it on Hatchet with retries, scheduling, and human-in-the-loop built in. When a workflow needs a human decision, answer it in Claude or in the Zyk dashboard and it resumes automatically. No node editors, no connectors to configure.
 
 Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows are plain TypeScript files you own. If you ever outgrow Zyk, you can run them directly on Hatchet without changing a line of code.
 
