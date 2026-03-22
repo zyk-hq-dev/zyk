@@ -13,7 +13,7 @@ No connectors to configure. No DSL to learn. Just describe it — the diagram bu
 
 **What durable means in practice:** a workflow can fire on a Slack message, create a GitHub issue, post Approve/Reject buttons back to Slack, and wait days for a human to respond — then resume and close the loop automatically. No split endpoints, no manual state management.
 
-Open source, self-hosted on Railway.
+Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows are plain TypeScript files you own. If you ever outgrow Zyk, you can run them directly on Hatchet without changing a line of code.
 
 **Learn more** — [zyk.dev](https://zyk.dev) · **Questions or feedback** — [hello@zyk.dev](mailto:hello@zyk.dev)
 
