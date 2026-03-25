@@ -88,8 +88,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "      body: JSON.stringify({ correlationId, workflowName: 'my-workflow', message: 'Do you approve?', options: ['yes', 'no'] }),\n" +
         "    });\n" +
         "    await ctx.log(`Waiting for user input (id=${correlationId})`);\n" +
-        "    const result = await ctx.waitForEvent(correlationId);\n" +
-        "    const action = (result.data as any).action as string;\n" +
+        "    await ctx.waitForEvent(correlationId); // signals user responded — carries no payload\n" +
+        "    const answerRes = await fetch(`${base}/interact/answer/${correlationId}`);\n" +
+        "    const { action } = await answerRes.json() as { action: string };\n" +
         "    await ctx.log(`User answered: ${action}`);\n" +
         "    return { answer: action };\n" +
         "  },\n" +
@@ -104,10 +105,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "    const correlationId = `approval-${Date.now()}`;\n" +
         "    // post Slack message with block_id: correlationId on the actions block\n" +
         "    await ctx.log(`Waiting for Slack approval (id=${correlationId})`);\n" +
-        "    const result = await ctx.waitForEvent(correlationId);\n" +
-        "    const action = (result.data as any).action as string;\n" +
-        "    const userId = (result.data as any).userId as string;\n" +
-        "    await ctx.log(`Decision: ${action} by ${userId}`);\n" +
+        "    await ctx.waitForEvent(correlationId); // signals user responded — carries no payload\n" +
+        "    const answerRes = await fetch(`${base}/interact/answer/${correlationId}`);\n" +
+        "    const { action } = await answerRes.json() as { action: string };\n" +
+        "    await ctx.log(`Decision: ${action}`);\n" +
         "    return { approved: action === 'approve', action };\n" +
         "  },\n" +
         "});\n" +
@@ -153,7 +154,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(8b) ANTHROPIC API CALLS: always include headers { 'x-api-key': process.env.ANTHROPIC_API_KEY ?? '', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } — NEVER omit x-api-key. Default model: claude-sonnet-4-20250514. Always strip markdown code fences before JSON.parse: rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim(). " +
         "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
         "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
-        "(11) ctx.waitForEvent() returns an event object shaped { id: string, data: Record<string,unknown> }. Your pushed payload is nested under .data. ALWAYS access eventData.data.action, eventData.data.userId etc. — NOT eventData.action directly (that is undefined). Example: const eventData = await ctx.waitForEvent(correlationId); const action = (eventData.data as any).action as string; " +
+        "(11) ctx.waitForEvent() returns {} — it carries NO payload. It only signals that the event occurred. To get the user's answer, fetch it from the MCP server AFTER waitForEvent resolves: await ctx.waitForEvent(correlationId); const answerRes = await fetch(`${base}/interact/answer/${correlationId}`); const { action } = await answerRes.json(); — where base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100'. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",
       inputSchema: {

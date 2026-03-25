@@ -1328,6 +1328,20 @@ async function handleRequest(
     return;
   }
 
+  // GET /interact/answer/:correlationId — workflow fetches stored answer after waitForEvent resolves
+  const interactAnswerMatch = url.match(/^\/interact\/answer\/([^/]+)$/);
+  if (method === "GET" && interactAnswerMatch) {
+    const correlationId = decodeURIComponent(interactAnswerMatch[1]);
+    const answer = pendingInteractions.get(correlationId);
+    if (!answer) {
+      sendJson(res, 404, { error: "Answer not found" });
+      return;
+    }
+    pendingInteractions.delete(correlationId);
+    sendJson(res, 200, answer as unknown as Record<string, unknown>);
+    return;
+  }
+
   // GET /api/tasks — list pending questions for the dashboard
   if (method === "GET" && url === "/api/tasks") {
     const tasks = getPendingQuestions().map((t) => ({
