@@ -522,9 +522,12 @@ const waitForApproval = workflow.durableTask({
   fn: async (_input, ctx) => {
     const { correlationId } = await ctx.parentOutput(requestApproval) as { correlationId: string };
     await ctx.log(`Waiting for approval (id=${correlationId})`);
-    const eventData = await ctx.waitForEvent(correlationId) as { action: string; userId: string };
-    await ctx.log(`Decision: ${eventData.action} by ${eventData.userId}`);
-    return { approved: eventData.action === "approve", action: eventData.action, userId: eventData.userId };
+    const result = await ctx.waitForEvent(correlationId);
+    // result.data contains the pushed payload — action/userId are nested under .data
+    const action = (result.data as any).action as string;
+    const userId = (result.data as any).userId as string;
+    await ctx.log(`Decision: ${action} by ${userId}`);
+    return { approved: action === "approve", action, userId };
   },
 });
 ```
@@ -566,8 +569,9 @@ const askUser = workflow.durableTask({
     await ctx.log(`Question posted (id=${correlationId})`);
 
     // Suspend durably — resumes automatically when user answers
-    const eventData = await ctx.waitForEvent(correlationId) as { action: string };
-    const answer = eventData.action.toLowerCase(); // normalize — always compare lowercase
+    const result = await ctx.waitForEvent(correlationId);
+    // result.data contains the pushed payload — action is nested under .data
+    const answer = ((result.data as any).action as string).toLowerCase(); // normalize — always compare lowercase
 
     await ctx.log(`User answered: ${answer}`);
     return { answer };
