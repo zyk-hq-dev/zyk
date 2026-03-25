@@ -150,7 +150,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(8b) ANTHROPIC API CALLS: always include headers { 'x-api-key': process.env.ANTHROPIC_API_KEY ?? '', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } — NEVER omit x-api-key. Default model: claude-sonnet-4-20250514. Always strip markdown code fences before JSON.parse: rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim(). " +
         "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
         "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
-        "(11) ctx.waitForEvent() PAYLOAD: Hatchet wraps the event in result.payload (JSON string). ALWAYS do: const eventData = JSON.parse(result.payload as string); then use eventData.action — never result.action directly. " +
+        "(11) ctx.waitForEvent() returns the payload directly as a plain object — NOT a wrapper object. Use result.action, result.userId etc. directly. NEVER do JSON.parse(result.payload) — result.payload is undefined and will crash with 'undefined is not valid JSON'. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",
       inputSchema: {
