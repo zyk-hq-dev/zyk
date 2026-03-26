@@ -1395,13 +1395,14 @@ async function pushHatchetEvent(correlationId: string, payload: Record<string, u
 
 export function storeInteractionAnswer(correlationId: string, action: string): void {
   // Keep in-memory store for legacy polling workflows and dashboard UI
+  const normalizedAction = action.toLowerCase();
   pendingInteractions.set(correlationId, {
-    action,
+    action: normalizedAction,
     userId: "claude-user",
     timestamp: new Date().toISOString(),
   });
   // Also push a Hatchet event for durable-task workflows using ctx.waitForEvent()
-  pushHatchetEvent(correlationId, { action: action.toLowerCase(), userId: "claude-user" }).catch(() => {});
+  pushHatchetEvent(correlationId, { action: normalizedAction, userId: "claude-user" }).catch(() => {});
 }
 
 // ── Server startup ────────────────────────────────────────────────────────────
