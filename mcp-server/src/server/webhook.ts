@@ -1009,13 +1009,16 @@ async function handleRequest(
   // (Railway probes this path before the user can configure a header).
   const apiKey = process.env.ZYK_API_KEY;
   const isSlackCallback = url === "/slack/interactions" || url.startsWith("/slack/pending/");
+  // Webhook triggers are unauthenticated — external services (GitHub, etc.) call these
+  // without an Authorization header. The workflow ID in the URL acts as the implicit secret.
+  const isWebhookTrigger = url.startsWith("/webhook/");
   const isHealthcheck = url === "/api/workflows" && method === "GET";
   // The dashboard HTML and favicon must load in a browser without auth headers.
   // The HTML embeds the API key as a fetch interceptor, so subsequent API calls are authenticated.
   const isDashboardPage = method === "GET" && (url === "/" || url === "/favicon.svg");
   // Worker subprocesses call these endpoints from localhost without auth headers.
   const isWorkerEndpoint = url === "/interact/ask" || url.startsWith("/interact/respond/") || url.startsWith("/interact/answer/");
-  if (apiKey && !isSlackCallback && !isHealthcheck && !isDashboardPage && !isWorkerEndpoint) {
+  if (apiKey && !isSlackCallback && !isWebhookTrigger && !isHealthcheck && !isDashboardPage && !isWorkerEndpoint) {
     const authHeader = req.headers["authorization"] ?? "";
     const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
     let valid = false;
