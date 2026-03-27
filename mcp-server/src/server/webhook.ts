@@ -1014,7 +1014,7 @@ async function handleRequest(
   // The HTML embeds the API key as a fetch interceptor, so subsequent API calls are authenticated.
   const isDashboardPage = method === "GET" && (url === "/" || url === "/favicon.svg");
   // Worker subprocesses call these endpoints from localhost without auth headers.
-  const isWorkerEndpoint = url === "/interact/ask" || url.startsWith("/interact/respond/");
+  const isWorkerEndpoint = url === "/interact/ask" || url.startsWith("/interact/respond/") || url.startsWith("/interact/answer/");
   if (apiKey && !isSlackCallback && !isHealthcheck && !isDashboardPage && !isWorkerEndpoint) {
     const authHeader = req.headers["authorization"] ?? "";
     const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
