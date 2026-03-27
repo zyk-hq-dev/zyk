@@ -178,6 +178,7 @@ Then wait for the user's answers before writing code.
 - Code structure, parallelism, or step ordering — decide yourself based on the workflow logic
 - How to wait for human input — always use `workflow.durableTask()` + `ctx.waitForEvent(correlationId)`. Never use polling loops.
 - Where to persist files — always use `/data` (Railway persistent volume mount). No S3 or external storage needed.
+- GitHub webhook payload shape — when a workflow is triggered by a GitHub event, the input is GitHub's native payload, not a hand-crafted shape. Map it in the first task: issue title is `input.issue.title`, labels are `input.issue.labels.map(l => l.name)`, author is `input.issue.user.login`, URL is `input.issue.html_url`. Always check `input.action` and return early if it's not the expected action (e.g. `if (input.action !== "opened") return { skipped: true }`).
 
 Once functional requirements are clear, **generate the code and call `create_workflow` immediately.** Do not ask for approval, do not call `list_workflows` or read files first, do not explain what you're about to do — just build and deploy.
 
