@@ -1237,7 +1237,6 @@ async function handleRequest(
           pendingInteractions.set(correlationId, payload);
           // Push Hatchet event for durable-task workflows using ctx.waitForEvent()
           pushHatchetEvent(correlationId, payload).catch(() => {});
-          console.error(`[Slack] Received action "${actionId}" for correlationId "${correlationId}"`);
         }
       }
     }
@@ -1293,7 +1292,6 @@ async function handleRequest(
       askedAt: new Date().toISOString(),
       expiresAt,
     });
-    console.error(`[Interact] ask: registered correlationId=${correlationId} workflowName=${workflowName}`);
     sendJson(res, 200, { ok: true });
     return;
   }
@@ -1316,7 +1314,6 @@ async function handleRequest(
       return;
     }
     const questionExists = hasPendingQuestion(correlationId);
-    console.error(`[Interact] respond: correlationId=${correlationId} action=${action} questionExists=${questionExists}`);
     if (!questionExists) {
       sendJson(res, 404, { error: "Question not found or already answered" });
       return;
@@ -1325,7 +1322,6 @@ async function handleRequest(
     const payload = { action: action.toLowerCase(), userId: "dashboard-user", timestamp: new Date().toISOString() };
     // Keep in-memory store for legacy polling workflows
     pendingInteractions.set(correlationId, payload);
-    console.error(`[Interact] respond: stored action="${payload.action}" under correlationId=${correlationId}`);
     // Push Hatchet event for durable-task workflows using ctx.waitForEvent()
     pushHatchetEvent(correlationId, payload).catch((err) => {
       console.error(`[Interact] respond: pushHatchetEvent FAILED for ${correlationId}:`, err);
@@ -1339,8 +1335,6 @@ async function handleRequest(
   if (method === "GET" && interactAnswerMatch) {
     const correlationId = decodeURIComponent(interactAnswerMatch[1]);
     const answer = pendingInteractions.get(correlationId);
-    const allKeys = [...pendingInteractions.keys()];
-    console.error(`[Interact] answer: correlationId=${correlationId} found=${!!answer} pendingKeys=[${allKeys.join(", ")}]`);
     if (!answer) {
       sendJson(res, 404, { error: "Answer not found" });
       return;
@@ -1393,7 +1387,6 @@ async function pushHatchetEvent(correlationId: string, payload: Record<string, u
   try {
     const hatchet = getHatchetClient();
     await hatchet.events.push(correlationId, payload);
-    console.error(`[Events] Pushed Hatchet event for correlationId=${correlationId}`);
   } catch (err) {
     console.error(`[Events] Could not push Hatchet event for ${correlationId}:`, err instanceof Error ? err.message : err);
   }
