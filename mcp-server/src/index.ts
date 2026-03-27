@@ -82,7 +82,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "  executionTimeout: '24h',\n" +
         "  fn: async (_input, ctx) => {\n" +
         "    const correlationId = `question-${ctx.workflowRunId()}`;\n" +
-        "    const base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100';\n" +
+        "    const base = process.env.ZYK_WEBHOOK_BASE ?? `http://localhost:${process.env.PORT ?? '3100'}`;\n" +
         "    await fetch(`${base}/interact/ask`, {\n" +
         "      method: 'POST', headers: { 'Content-Type': 'application/json' },\n" +
         "      body: JSON.stringify({ correlationId, workflowName: 'my-workflow', message: 'Do you approve?', options: ['yes', 'no'] }),\n" +
@@ -154,7 +154,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(8b) ANTHROPIC API CALLS: always include headers { 'x-api-key': process.env.ANTHROPIC_API_KEY ?? '', 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' } — NEVER omit x-api-key. Default model: claude-sonnet-4-20250514. Always strip markdown code fences before JSON.parse: rawText.replace(/^```(?:json)?\\s*/m, '').replace(/\\s*```$/m, '').trim(). " +
         "(9) SCHEDULED WORKFLOWS: ALWAYS include on: { cron: '<expression>' } inside hatchet.workflow({...}) — e.g. hatchet.workflow({ name: 'my-workflow', on: { cron: '* * * * *' } }). WITHOUT THIS the workflow is never triggered automatically. " +
         "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
-        "(11) ctx.waitForEvent() returns {} — it carries NO payload. It only signals that the event occurred. To get the user's answer, fetch it from the MCP server AFTER waitForEvent resolves: await ctx.waitForEvent(correlationId); const answerRes = await fetch(`${base}/interact/answer/${correlationId}`); const { action } = await answerRes.json(); — where base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100'. " +
+        "(11) ctx.waitForEvent() returns {} — it carries NO payload. It only signals that the event occurred. To get the user's answer, fetch it from the MCP server AFTER waitForEvent resolves: await ctx.waitForEvent(correlationId); const answerRes = await fetch(`${base}/interact/answer/${correlationId}`); const { action } = await answerRes.json(); — where base = process.env.ZYK_WEBHOOK_BASE ?? `http://localhost:${process.env.PORT ?? '3100'}`. " +
         "(12) CRITICAL — correlationId inside a durableTask fn MUST use ctx.workflowRunId(), NEVER Date.now(). Hatchet replays durable task fns from scratch when waitForEvent resolves. Date.now() returns a different value on replay so the correlationId changes, the answer lookup returns 404, and action is undefined — causing every approval to silently appear as a rejection. CORRECT: const correlationId = `approval-${ctx.workflowRunId()}`; WRONG: const correlationId = `approval-${Date.now()}`; " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",

@@ -89,6 +89,12 @@ function forkWorker(workflowId: string, filePath: string): Promise<void> {
           // Can be overridden by setting HATCHET_CLIENT_TLS_STRATEGY explicitly.
           HATCHET_CLIENT_TLS_STRATEGY:
             process.env.HATCHET_CLIENT_TLS_STRATEGY ?? "none",
+          // Ensure workflow code can always reach the webhook server.
+          // On Railway, PORT is set to 8080 — generated code may hardcode 3100 as fallback.
+          // Setting ZYK_WEBHOOK_BASE here ensures the subprocess always uses the right port.
+          ZYK_WEBHOOK_BASE:
+            process.env.ZYK_WEBHOOK_BASE ??
+            `http://localhost:${process.env.PORT ?? process.env.WEBHOOK_PORT ?? "3100"}`,
           // Strip server-internal secrets so workflow code cannot exfiltrate them.
           // Workflows only need Hatchet SDK vars + user-supplied integration secrets.
           ZYK_API_KEY: undefined,
