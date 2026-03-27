@@ -81,7 +81,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "  name: 'ask-user',\n" +
         "  executionTimeout: '24h',\n" +
         "  fn: async (_input, ctx) => {\n" +
-        "    const correlationId = `question-${Date.now()}`;\n" +
+        "    const correlationId = `question-${ctx.workflowRunId()}`;\n" +
         "    const base = process.env.ZYK_WEBHOOK_BASE ?? 'http://localhost:3100';\n" +
         "    await fetch(`${base}/interact/ask`, {\n" +
         "      method: 'POST', headers: { 'Content-Type': 'application/json' },\n" +
@@ -102,7 +102,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "  name: 'wait-for-approval',\n" +
         "  executionTimeout: '24h',\n" +
         "  fn: async (_input, ctx) => {\n" +
-        "    const correlationId = `approval-${Date.now()}`;\n" +
+        "    const correlationId = `approval-${ctx.workflowRunId()}`;\n" +
         "    // post Slack message with block_id: correlationId on the actions block\n" +
         "    await ctx.log(`Waiting for Slack approval (id=${correlationId})`);\n" +
         "    await ctx.waitForEvent(correlationId); // signals user responded — carries no payload\n" +

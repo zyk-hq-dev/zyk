@@ -551,7 +551,7 @@ const askUser = workflow.durableTask({
   name: "ask-user",
   executionTimeout: "24h",
   fn: async (_input, ctx) => {
-    const correlationId = `question-${Date.now()}`;
+    const correlationId = `question-${ctx.workflowRunId()}`;
     const base = process.env.ZYK_WEBHOOK_BASE ?? "http://localhost:3100";
 
     // Register the question so it appears in the Zyk dashboard
