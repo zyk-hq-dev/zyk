@@ -118,6 +118,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(3) executionTimeout: '24h' sets the maximum wait time. " +
         "(4) Still call POST /interact/ask for native interactions so the question appears in the Zyk dashboard. " +
         "(5) For Slack: set block_id on the actions block to the correlationId — that's what Zyk uses to match the click.\n" +
+        "\n\nGITHUB WEBHOOK TRIGGER PATTERN — when the trigger is a GitHub event (issue opened, PR, push, etc.), the workflow receives GitHub's native webhook payload. NEVER invent a custom input interface like IssueInput with fields like issueTitle or issueBody — those will always be undefined. Use this exact interface and mapping pattern:\n" +
+        "```typescript\n" +
+        "interface GitHubIssueWebhook {\n" +
+        "  action: string;\n" +
+        "  issue: {\n" +
+        "    number: number;\n" +
+        "    title: string;\n" +
+        "    body: string;\n" +
+        "    html_url: string;\n" +
+        "    labels: Array<{ name: string }>;\n" +
+        "    user: { login: string };\n" +
+        "  };\n" +
+        "}\n" +
+        "const firstTask = workflow.task({\n" +
+        "  name: 'handle-issue',\n" +
+        "  fn: async (input: GitHubIssueWebhook, ctx) => {\n" +
+        "    if (input.action !== 'opened') return { skipped: true };\n" +
+        "    const title = input.issue.title;\n" +
+        "    const body = input.issue.body;\n" +
+        "    const url = input.issue.html_url;\n" +
+        "    const number = input.issue.number;\n" +
+        "    const labels = input.issue.labels.map(l => l.name);\n" +
+        "    const author = input.issue.user.login;\n" +
+        "    // ... rest of logic\n" +
+        "  },\n" +
+        "});\n" +
+        "```\n" +
         "\n\nMANDATORY CODE TEMPLATE (copy this structure exactly — wrong patterns cause runtime errors):\n" +
         "```typescript\n" +
         'import { Hatchet } from "@hatchet-dev/typescript-sdk"; // named import — NOT default\n' +
@@ -156,7 +183,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "(10) HUMAN INPUT: use workflow.durableTask() not workflow.task() for any step that waits for user input. See HUMAN INTERACTION PATTERN above. " +
         "(11) ctx.waitForEvent() returns {} — it carries NO payload. It only signals that the event occurred. To get the user's answer, fetch it from the MCP server AFTER waitForEvent resolves: await ctx.waitForEvent(correlationId); const answerRes = await fetch(`${base}/interact/answer/${correlationId}`); const { action } = await answerRes.json(); — where base = process.env.ZYK_WEBHOOK_BASE ?? `http://localhost:${process.env.PORT ?? '3100'}`. " +
         "(12) CRITICAL — correlationId inside a durableTask fn MUST use ctx.workflowRunId(), NEVER Date.now(). Hatchet replays durable task fns from scratch when waitForEvent resolves. Date.now() returns a different value on replay so the correlationId changes, the answer lookup returns 404, and action is undefined — causing every approval to silently appear as a rejection. CORRECT: const correlationId = `approval-${ctx.workflowRunId()}`; WRONG: const correlationId = `approval-${Date.now()}`; " +
-        "(13) GITHUB WEBHOOK TRIGGERS: when a workflow is triggered by a GitHub event (issue opened, PR, push, etc.), the input will be GitHub's native webhook payload — NOT a hand-crafted shape. Always map GitHub's payload in the first task. Examples: issue title is input.issue.title (not input.issueTitle), labels are input.issue.labels.map(l => l.name), author is input.issue.user.login, URL is input.issue.html_url. Always check input.action and return early if it's not the expected action (e.g. if (input.action !== 'opened') return { skipped: true }). " +
+        "(13) GITHUB WEBHOOK TRIGGERS: NEVER use a custom input interface (e.g. IssueInput with issueTitle, issueBody) — those fields will always be undefined. Always use the GitHubIssueWebhook interface and mapping pattern shown above. " +
         "\n\nDIAGRAM: The diagram is stored internally and rendered automatically in the Zyk dashboard. " +
         "Do NOT output any mermaid diagram in your reply — just confirm the workflow was created.",
       inputSchema: {
