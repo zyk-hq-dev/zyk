@@ -47,6 +47,8 @@ Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks
 
 ### Step 2 — Connect Claude
 
+Pick one — you only need to configure the Claude client you use:
+
 **Claude Desktop** — add to `claude_desktop_config.json`:
 
 ```json
@@ -209,7 +211,7 @@ Any variable you add is automatically available in generated workflow code.
 | `HATCHET_CLIENT_HOST_PORT` | Yes | Same as `HATCHET_HOST_PORT` |
 | `HATCHET_CLIENT_TOKEN` | No | Auto-generated on first boot and cached to the persistent volume. |
 | `HATCHET_REST_URL` | No | Hatchet REST URL (default: derived from `HATCHET_HOST_PORT`) |
-| `WORKFLOWS_DIR` | No | Workflow storage directory (default `/app/workflows`) |
+| `WORKFLOWS_DIR` | No | Workflow storage directory. Set to `/app/workflows` to match the persistent volume mount path. |
 | `PORT` | No | HTTP server port. Railway sets this automatically (typically `8080`). Default `3100` for local. |
 | `ZYK_WEBHOOK_BASE` | No | External base URL workers use to reach the Zyk server. Set automatically on Railway via `ZYK_WEBHOOK_BASE`. For local development, defaults to `http://localhost:3100`. Required if `PORT` differs from `3100` and you're running human-in-the-loop workflows. |
 
