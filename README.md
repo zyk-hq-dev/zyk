@@ -31,19 +31,15 @@ Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows 
 
 ### Step 1 — Deploy on Railway
 
-Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and the Zyk MCP Server automatically.
+Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and the Zyk MCP Server automatically. `ZYK_API_KEY` is auto-generated during deploy — no preparation needed.
 
 [![Deploy on Railway](https://railway.com/button.svg)](#)
 
-During setup, Railway will ask you to set one variable:
-
-| Variable | Value |
-|----------|-------|
-| `ZYK_API_KEY` | Any secret string you choose. Protects your MCP endpoint and dashboard. Generate one with: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
-Once deployed, copy your Zyk MCP Server URL from the Railway dashboard. It looks like `https://<zyk>.up.railway.app`.
+Once deployed:
+1. Copy your `ZYK_API_KEY` from the Railway service's **Variables** tab — you'll need it in the next step.
+2. Copy your Zyk MCP Server URL from **Settings > Networking > Public URL**. It looks like `https://<zyk>.up.railway.app`.
 
 ### Step 2 — Connect Claude
 
@@ -206,7 +202,7 @@ Any variable you add is automatically available in generated workflow code.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ZYK_API_KEY` | Recommended | Protects your MCP endpoint and dashboard. Set the same value in your Claude config. |
+| `ZYK_API_KEY` | Recommended | Protects your MCP endpoint and dashboard. Auto-generated during Railway deploy — copy it from the Variables tab and set it in your Claude config. |
 | `HATCHET_HOST_PORT` | Yes | gRPC address: `hatchet-lite.railway.internal:7077` |
 | `HATCHET_CLIENT_HOST_PORT` | Yes | Same as `HATCHET_HOST_PORT` |
 | `HATCHET_CLIENT_TOKEN` | No | Auto-generated on first boot and cached to the persistent volume. |
