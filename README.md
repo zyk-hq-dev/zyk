@@ -45,7 +45,7 @@ Once deployed:
 
 Pick one — you only need to configure the Claude client you use:
 
-**Claude Desktop** _(recommended — tested for alpha)_ — add to `claude_desktop_config.json`:
+**Claude Desktop** _(recommended — tested for alpha)_ — open the config via **Settings > Developer > Local MCP Servers > Edit Config** and add the `zyk` entry inside `"mcpServers"`. Your file may already have other content — only add what's shown, don't replace the whole file:
 
 ```json
 {
@@ -62,8 +62,6 @@ Pick one — you only need to configure the Claude client you use:
 ```
 
 `npx` runs a tiny local stdio/HTTP bridge. Node.js must be installed, nothing else.
-
-The easiest way to find the config is inside Claude Desktop: **Settings > Developer > Local MCP Servers > Edit Config**. This opens the correct file regardless of how Claude was installed.
 
 Fully quit and restart Claude after saving.
 
