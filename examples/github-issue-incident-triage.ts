@@ -1,39 +1,76 @@
 import { Hatchet } from "@hatchet-dev/typescript-sdk";
 
 const hatchet = Hatchet.init();
+const workflow = hatchet.workflow({ name: "github-incident-triage" });
 
-interface IssueInput {
-  issueTitle: string;
-  issueBody: string;
-  issueUrl: string;
-  issueNumber: number;
-  labels: string[];
-  author: string;
+interface GitHubIssueWebhook {
+  action: string;
+  issue: {
+    number: number;
+    title: string;
+    body: string;
+    html_url: string;
+    labels: Array<{ name: string }>;
+    user: { login: string };
+  };
 }
 
-const workflow = hatchet.workflow({ name: "github-issue-incident-triage" });
-
+// ── Step 1: Read issue and assess severity with Claude ───────────────────────
 const assessSeverity = workflow.task({
   name: "assess-severity",
   retries: 3,
-  fn: async (input: IssueInput, ctx) => {
-    await ctx.log(`Assessing severity for issue #${input.issueNumber}: ${input.issueTitle}`);
+  fn: async (input: GitHubIssueWebhook, ctx) => {
+    if (input.action !== "opened") {
+      await ctx.log("Skipping — action is not 'opened'");
+      return { skipped: true, severity: "", slackMessage: "", issueUrl: "" };
+    }
 
-    const prompt = `You are an on-call incident triage assistant. A GitHub issue was opened with the following details:
+    const labels = input.issue.labels.map((l) => l.name.toLowerCase());
+    const isRelevant =
+      labels.includes("critical") || labels.includes("production");
 
-Title: ${input.issueTitle}
-Labels: ${input.labels.join(", ")}
-Author: ${input.author}
-URL: ${input.issueUrl}
+    if (!isRelevant) {
+      await ctx.log("Skipping — no critical or production label");
+      return { skipped: true, severity: "", slackMessage: "", issueUrl: "" };
+    }
 
-Body:
-${input.issueBody}
+    const { number, title, body, html_url: url, user } = input.issue;
+    const author = user.login;
+    const labelsDisplay = input.issue.labels.map((l) => l.name).join(", ");
 
-Analyze this issue and respond ONLY with a JSON object (no markdown fences) with these fields:
-- severity: one of "critical", "high", "medium", "low"
-- reasoning: 1-2 sentence explanation of your severity assessment
-- summary: a concise 2-3 sentence summary of what the issue is about
-- impact: brief description of potential user/system impact`;
+    await ctx.log(`Assessing issue #${number}: ${title}`);
+
+    const prompt = `You are an on-call incident responder. A GitHub issue has been opened with a critical or production label.
+
+Issue details:
+- Number: #${number}
+- Title: ${title}
+- Author: @${author}
+- Labels: ${labelsDisplay}
+- URL: ${url}
+- Body:
+${body ?? "(no description provided)"}
+
+Your tasks:
+1. Assess the severity. Choose exactly one:
+   - CRITICAL: immediate action required — service down, data loss risk, or full outage
+   - HIGH: significant impact — major feature broken, no workaround
+   - MEDIUM: limited impact — partial degradation, workaround available
+
+2. Write a one-sentence plain-English summary of the problem.
+
+3. Write a Slack message for #incidents. Include:
+   - A severity emoji: 🔴 CRITICAL, 🟠 HIGH, 🟡 MEDIUM
+   - Issue title, number, and URL
+   - The one-sentence summary
+   - Severity level clearly labeled
+
+Respond ONLY with valid JSON — no markdown, no preamble:
+{
+  "severity": "CRITICAL" | "HIGH" | "MEDIUM",
+  "summary": "<one sentence>",
+  "slackMessage": "<full Slack message text>"
+}`;
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -49,128 +86,137 @@ Analyze this issue and respond ONLY with a JSON object (no markdown fences) with
       }),
     });
 
-    if (!res.ok) throw new Error(`Anthropic API error: ${res.status} ${await res.text()}`);
-
-    const data = await res.json() as { content: Array<{ type: string; text: string }> };
-    const raw = data.content.find(b => b.type === "text")?.text ?? "{}";
-    const cleaned = raw.replace(/^```(?:json)?\s*/m, "").replace(/\s*```$/m, "").trim();
-    const assessment = JSON.parse(cleaned) as {
-      severity: string;
-      reasoning: string;
-      summary: string;
-      impact: string;
-    };
-
-    await ctx.log(`Severity assessed: ${assessment.severity}`);
-    return { assessment, issue: input };
-  },
-});
-
-const draftSlackMessage = workflow.task({
-  name: "draft-slack-message",
-  parents: [assessSeverity],
-  retries: 3,
-  fn: async (_input: IssueInput, ctx) => {
-    const { assessment, issue } = await ctx.parentOutput(assessSeverity);
-
-    const severityEmoji: Record<string, string> = {
-      critical: "🔴",
-      high: "🟠",
-      medium: "🟡",
-      low: "🟢",
-    };
-
-    const emoji = severityEmoji[assessment.severity] ?? "⚪";
-
-    const message = `${emoji} *Incident Alert — ${assessment.severity.toUpperCase()}*
-
-*Issue:* <${issue.issueUrl}|#${issue.issueNumber} ${issue.issueTitle}>
-*Labels:* ${issue.labels.join(", ")}
-*Opened by:* ${issue.author}
-
-*Summary:* ${assessment.summary}
-
-*Impact:* ${assessment.impact}
-
-*Severity Reasoning:* ${assessment.reasoning}`;
-
-    await ctx.log("Slack message drafted");
-    return { message, severity: assessment.severity, issue };
-  },
-});
-
-const requestApproval = workflow.durableTask({
-  name: "request-approval",
-  parents: [draftSlackMessage],
-  executionTimeout: "24h",
-  fn: async (_input: IssueInput, ctx) => {
-    const { message, severity, issue } = await ctx.parentOutput(draftSlackMessage);
-
-    if (severity !== "critical") {
-      await ctx.log(`Severity is ${severity} — skipping approval gate`);
-      return { approved: true, message, severity, issue };
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Anthropic API error ${res.status}: ${err}`);
     }
 
-    await ctx.log("Critical severity detected — requesting human approval");
+    const data = (await res.json()) as {
+      content: Array<{ type: string; text: string }>;
+    };
+    const rawText = data.content.find((b) => b.type === "text")?.text ?? "";
+    const clean = rawText
+      .replace(/^```(?:json)?\s*/m, "")
+      .replace(/\s*```$/m, "")
+      .trim();
 
-    const correlationId = `incident-approval-${ctx.workflowRunId()}`;
-    const base = process.env.ZYK_WEBHOOK_BASE ?? `http://localhost:${process.env.PORT ?? "3100"}`;
+    const assessment = JSON.parse(clean) as {
+      severity: string;
+      summary: string;
+      slackMessage: string;
+    };
+
+    await ctx.log(`Severity: ${assessment.severity} — ${assessment.summary}`);
+
+    return {
+      skipped: false,
+      severity: assessment.severity,
+      summary: assessment.summary,
+      slackMessage: assessment.slackMessage,
+      issueUrl: url,
+      issueNumber: number,
+      issueTitle: title,
+    };
+  },
+});
+
+// ── Step 2 (conditional): Human approval gate for CRITICAL ───────────────────
+const askForApproval = workflow.durableTask({
+  name: "ask-for-approval",
+  parents: [assessSeverity],
+  executionTimeout: "24h",
+  fn: async (_input, ctx) => {
+    const { skipped, severity, slackMessage, issueNumber, issueTitle } =
+      await ctx.parentOutput(assessSeverity);
+
+    if (skipped || severity !== "CRITICAL") {
+      await ctx.log(
+        `Severity is ${severity || "N/A"} — no approval needed, auto-posting`
+      );
+      return { approved: true, skipped: true };
+    }
+
+    const correlationId = `approval-${ctx.workflowRunId()}`;
+    const base =
+      process.env.ZYK_WEBHOOK_BASE ??
+      `http://localhost:${process.env.PORT ?? "3100"}`;
 
     await fetch(`${base}/interact/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         correlationId,
-        workflowName: "github-issue-incident-triage",
-        message: `Critical issue #${issue.issueNumber} detected: "${issue.issueTitle}". Ready to post to ${process.env.SLACK_CHANNEL ?? "#incidents"}. Do you approve?`,
+        workflowName: "github-incident-triage",
+        message:
+          `CRITICAL — issue #${issueNumber}: ${issueTitle}\n\n` +
+          `Ready to post to #incidents:\n\n${slackMessage}\n\n` +
+          `Approve posting?`,
         options: ["approve", "reject"],
         timeoutSeconds: 86400,
       }),
     });
 
-    await ctx.log(`Approval request sent (correlationId=${correlationId}) — waiting...`);
+    await ctx.log(`Paused — waiting for approval (id=${correlationId})`);
     await ctx.waitForEvent(correlationId);
 
     const answerRes = await fetch(`${base}/interact/answer/${correlationId}`);
-    const { action } = await answerRes.json() as { action: string };
+    const { action } = (await answerRes.json()) as { action: string };
 
-    await ctx.log(`Approval decision: ${action}`);
-    return { approved: action === "approve", message, severity, issue };
+    await ctx.log(`Decision: ${action}`);
+    return { approved: action === "approve", skipped: false };
   },
 });
 
+// ── Step 3: Post to Slack ────────────────────────────────────────────────────
 workflow.task({
   name: "post-to-slack",
-  parents: [requestApproval],
+  parents: [askForApproval],
   retries: 3,
-  fn: async (_input: IssueInput, ctx) => {
-    const { approved, message, severity, issue } = await ctx.parentOutput(requestApproval);
+  fn: async (_input, ctx) => {
+    const { approved } = await ctx.parentOutput(askForApproval);
+    const { skipped, slackMessage, severity } =
+      await ctx.parentOutput(assessSeverity);
 
+    if (skipped) {
+      await ctx.log("Issue skipped — nothing to post");
+      return { posted: false, reason: "skipped" };
+    }
     if (!approved) {
-      await ctx.log(`Posting rejected — not sending Slack message for issue #${issue.issueNumber}`);
-      return { posted: false, reason: "rejected by user" };
+      await ctx.log("Rejected by approver — aborting");
+      return { posted: false, reason: "rejected" };
     }
 
-    const slackRes = await fetch("https://slack.com/api/chat.postMessage", {
+    await ctx.log(`Posting ${severity} alert to Slack`);
+
+    const res = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        channel: process.env.SLACK_CHANNEL,
-        text: message,
-        mrkdwn: true,
+        channel: process.env.SLACK_CHANNEL ?? "#incidents",
+        text: slackMessage,
       }),
     });
 
-    const slackData = await slackRes.json() as { ok: boolean; error?: string };
-    if (!slackData.ok) throw new Error(`Slack API error: ${slackData.error}`);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Slack API error ${res.status}: ${err}`);
+    }
 
-    await ctx.log(`Message posted to Slack for issue #${issue.issueNumber} (severity: ${severity})`);
-    return { posted: true, severity, issueNumber: issue.issueNumber };
+    const slackData = (await res.json()) as { ok: boolean; error?: string };
+    if (!slackData.ok) {
+      throw new Error(`Slack returned error: ${slackData.error}`);
+    }
+
+    await ctx.log("Posted successfully");
+    return { posted: true, severity };
   },
 });
 
-const worker = await hatchet.worker("github-issue-triage-worker", { workflows: [workflow] });
+const worker = await hatchet.worker("github-incident-triage-worker", {
+  workflows: [workflow],
+});
+
 export default { start: () => worker.start() };
