@@ -39,7 +39,7 @@ During setup, Railway will ask you to set one variable:
 
 | Variable | Value |
 |----------|-------|
-| `ZYK_API_KEY` | Any secret string you choose. Protects your MCP endpoint and dashboard. |
+| `ZYK_API_KEY` | Any secret string you choose. Protects your MCP endpoint and dashboard. Generate one with: `openssl rand -hex 32` or `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
@@ -191,9 +191,10 @@ Common secrets:
 | Variable | Description |
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Required for workflows that use Claude to classify, summarize, or make decisions. Get yours at [console.anthropic.com](https://console.anthropic.com). |
-| `SLACK_BOT_TOKEN` | `xoxb-...` |
+| `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope. From your Slack app's OAuth & Permissions page. |
+| `SLACK_CHANNEL` | Default channel for Slack messages, e.g. `#general` or `#incidents`. |
 | `SLACK_SIGNING_SECRET` | From Slack app settings. Enables signature verification on `/slack/interactions`. |
-| `GITHUB_TOKEN` | `ghp_...` |
+| `GITHUB_TOKEN` | `ghp_...` personal access token or GitHub App token with `repo` scope. |
 
 Any variable you add is automatically available in generated workflow code.
 
@@ -209,7 +210,8 @@ Any variable you add is automatically available in generated workflow code.
 | `HATCHET_CLIENT_TOKEN` | No | Auto-generated on first boot and cached to the persistent volume. |
 | `HATCHET_REST_URL` | No | Hatchet REST URL (default: derived from `HATCHET_HOST_PORT`) |
 | `WORKFLOWS_DIR` | No | Workflow storage directory (default `/app/workflows`) |
-| `WEBHOOK_PORT` | No | HTTP server port (default `3100`) |
+| `PORT` | No | HTTP server port. Railway sets this automatically (typically `8080`). Default `3100` for local. |
+| `ZYK_WEBHOOK_BASE` | No | External base URL workers use to reach the Zyk server. Set automatically on Railway via `ZYK_WEBHOOK_BASE`. For local development, defaults to `http://localhost:3100`. Required if `PORT` differs from `3100` and you're running human-in-the-loop workflows. |
 
 ---
 
@@ -218,7 +220,7 @@ Any variable you add is automatically available in generated workflow code.
 - **Single-user/single-team.** All workflows share one Hatchet tenant. No auth, no per-user namespacing.
 - **Human-in-the-loop via Slack or Zyk dashboard only.** Workflows can pause for a human response via Slack buttons or the Zyk task UI. Waiting for input from other systems (e.g. a Trello comment, an email reply) requires polling those APIs yourself.
 - **No code sandboxing.** Generated workflows run with full Node.js permissions and inherit the server's environment variables. This is the right tradeoff for single-team use; it's not appropriate for untrusted multi-user environments.
-- **Webhook trigger is unauthenticated.** `POST /webhook/:id` accepts requests from anywhere. Use `ZYK_API_KEY` or a reverse proxy for sensitive workflows.
+- **Webhook trigger is unauthenticated.** `POST /webhook/:id` accepts requests from anywhere — the workflow ID is the only protection. Use a reverse proxy or add signature verification for sensitive workflows.
 
 ---
 
@@ -257,7 +259,7 @@ Triggered by a webhook when a GitHub issue is opened. Assesses severity with Cla
 
 > Create a workflow called "github-issue-incident-triage" with these steps:
 >
-> 1. Receive a GitHub issue as input: title, body, URL, number, labels, and author
+> 1. Trigger: a GitHub issue is opened with a critical or production label
 > 2. Call the Anthropic API to assess severity (critical / high / medium / low) and produce a short summary and impact statement
 > 3. Draft a Slack message for #incidents with clearly labeled fields: severity level, issue link and number, labels, author, AI-generated summary, potential impact, and severity reasoning
 > 4. If severity is critical, pause and ask me for approval before posting
@@ -271,21 +273,26 @@ Triggered by a webhook when a GitHub issue is opened. Assesses severity with Cla
 | `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope |
 | `SLACK_CHANNEL` | Target channel, e.g. `#incidents` |
 
-**Trigger** — call the webhook when a GitHub issue is opened (e.g. via a GitHub Actions workflow or the GitHub webhook setting):
+**Trigger** — point a GitHub webhook at Zyk (repo Settings → Webhooks → Add webhook, select "Issues" events), or use a GitHub Actions step:
 
 ```
 POST https://<zyk>.up.railway.app/webhook/<workflow_id>
 Content-Type: application/json
 
 {
-  "issueTitle": "Payment service returning 500s in production",
-  "issueBody": "...",
-  "issueUrl": "https://github.com/org/repo/issues/99",
-  "issueNumber": 99,
-  "labels": ["critical", "production"],
-  "author": "username"
+  "action": "opened",
+  "issue": {
+    "number": 99,
+    "title": "Payment service returning 500s in production",
+    "body": "...",
+    "html_url": "https://github.com/org/repo/issues/99",
+    "labels": [{ "name": "critical" }, { "name": "production" }],
+    "user": { "login": "username" }
+  }
 }
 ```
+
+This is GitHub's native webhook payload shape — no transformation needed.
 
 **Full workflow code:** [`examples/github-issue-incident-triage.ts`](./examples/github-issue-incident-triage.ts)
 
