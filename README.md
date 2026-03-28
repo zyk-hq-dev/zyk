@@ -192,7 +192,7 @@ Common secrets:
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | Required for workflows that use Claude to classify, summarize, or make decisions. Get yours at [console.anthropic.com](https://console.anthropic.com). |
 | `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope. From your Slack app's OAuth & Permissions page. |
-| `SLACK_CHANNEL` | Default channel for Slack messages, e.g. `#general` or `#incidents`. |
+| `SLACK_CHANNEL` | Channel ID for Slack messages, e.g. `C01234ABCDE`. To find it: open the channel in Slack → click the channel name at the top → scroll to the bottom of the popup — the ID is shown there. |
 | `SLACK_SIGNING_SECRET` | From Slack app settings. Enables signature verification on `/slack/interactions`. |
 | `GITHUB_TOKEN` | `ghp_...` personal access token or GitHub App token with `repo` scope. |
 
@@ -271,7 +271,7 @@ Triggered by a webhook when a GitHub issue is opened. Assesses severity with Cla
 |----------|-------------|
 | `ANTHROPIC_API_KEY` | For Claude severity assessment |
 | `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope |
-| `SLACK_CHANNEL` | Target channel, e.g. `#incidents` |
+| `SLACK_CHANNEL` | Target channel ID, e.g. `C01234ABCDE` (see above for how to find it) |
 
 **Trigger** — point a GitHub webhook at Zyk (repo Settings → Webhooks → Add webhook, select "Issues" events), or use a GitHub Actions step:
 
