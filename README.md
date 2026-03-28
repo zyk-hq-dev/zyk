@@ -170,6 +170,18 @@ Content-Type: application/json
 
 ---
 
+## Modifying a workflow
+
+To change anything about a workflow — the Slack message format, a prompt, which channel to post to, adding a new step — just describe the change to Claude:
+
+> "Update the github-incident-triage workflow to also include the issue author in the Slack message"
+
+> "Change the approval threshold to HIGH and above, not just CRITICAL"
+
+Claude will rewrite the relevant parts and call `update_workflow`, which redeploys the worker in place without changing the workflow ID or losing run history.
+
+---
+
 ## Adding secrets
 
 Add environment variables to the `zyk` Railway service. Generated workflows access them via `process.env.VAR_NAME`.
