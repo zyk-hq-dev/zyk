@@ -38,14 +38,14 @@ Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and t
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
 Once deployed:
-1. Copy your `ZYK_API_KEY` from the Railway service's **Variables** tab — you'll need it in the next step.
-2. Copy your Zyk MCP Server URL from **Settings > Networking > Public URL**. It looks like `https://<zyk>.up.railway.app`.
+1. Copy your `ZYK_API_KEY` from the `zyk` Railway service's **Variables** tab — you'll need it in the next step.
+2. Copy your Zyk MCP Server URL from the `zyk` Railway service's **Settings > Networking > Public URL**. It looks like `https://<zyk>.up.railway.app`.
 
 ### Step 2 — Connect Claude
 
 Pick one — you only need to configure the Claude client you use:
 
-**Claude Desktop** — add to `claude_desktop_config.json`:
+**Claude Desktop** _(recommended — tested for alpha)_ — add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -67,7 +67,9 @@ The easiest way to find the config is inside Claude Desktop: **Settings > Develo
 
 Fully quit and restart Claude after saving.
 
-**Claude Code** — add to `.mcp.json`:
+> **No Node.js?** Open Claude in your browser, go to **Settings > Connectors > Add custom connector**, and paste your Railway URL (`https://<zyk>.up.railway.app/mcp`) and API key. No local setup needed. _(Not tested for alpha — let us know if you try it.)_
+
+**Claude Code** _(untested for alpha)_ — add to `.mcp.json`:
 
 ```json
 {
