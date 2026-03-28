@@ -247,7 +247,7 @@ Triggered by a webhook when a GitHub issue is opened. Assesses severity with Cla
 >
 > 1. Receive a GitHub issue as input: title, body, URL, number, labels, and author
 > 2. Call the Anthropic API to assess severity (critical / high / medium / low) and produce a short summary and impact statement
-> 3. Draft a Slack message for #incidents that includes severity, summary, issue link, and author
+> 3. Draft a Slack message for #incidents with clearly labeled fields: severity level, issue link and number, labels, author, AI-generated summary, potential impact, and severity reasoning
 > 4. If severity is critical, pause and ask me for approval before posting
 > 5. On approval, post the message to the Slack channel in `SLACK_CHANNEL`
 
