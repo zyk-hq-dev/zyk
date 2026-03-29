@@ -85,14 +85,25 @@ Fully quit and restart Claude after saving.
 
 ### Step 3 — Verify it works
 
-Ask Claude: *"List my workflows"*
+**Check the dashboards** — open both URLs from your Railway project's **Settings > Networking > Public URL**:
+
+- **Zyk dashboard** (`https://<zyk>.up.railway.app`) — should load and show an empty workflow list
+- **Hatchet UI** (`https://<hatchet-lite>.up.railway.app`) — should load and show a healthy engine. Default login: `admin@example.com` / `Admin123!!`
+
+**Check Claude** — ask: *"List my workflows"*
 
 Expected response:
 ```
 No workflows registered yet. Use create_workflow to create your first workflow.
 ```
 
-Then try: *"Create a workflow that posts a daily summary to Slack every morning"* and watch it build.
+**Tip:** Keep Claude and the Zyk dashboard open side by side. When you create a workflow you'll see the diagram appear in the dashboard in real time.
+
+Then try the full loop:
+1. *"Create a workflow that asks me what my favourite colour is and logs my answer"*
+2. *"Run it"*
+3. Open the Zyk dashboard Tasks tab — a question should appear within a few seconds
+4. Answer it — the run completes and you can see the result in the Hatchet UI
 
 > **Running locally?** See [CONTRIBUTING.md](./CONTRIBUTING.md) for local Docker Compose setup.
 
