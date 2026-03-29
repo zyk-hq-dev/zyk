@@ -404,3 +404,5 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup.
 ## License
 
 MIT
+
+**No warranty.** Zyk is MIT-licensed open-source software provided as-is. Use it at your own risk — the authors are not liable for any damages, data loss, or issues arising from its use. See [LICENSE](./LICENSE) for the full terms.
