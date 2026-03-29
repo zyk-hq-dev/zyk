@@ -331,9 +331,18 @@ For workflows with interactive buttons (e.g. approval flows), also set the **Int
 ## Known limitations
 
 - **Single-user/single-team.** All workflows share one Hatchet tenant. No auth, no per-user namespacing.
+- **Human tasks support buttons only.** The task UI presents predefined options as buttons. Free-text input fields and forms are not supported yet — questions requiring open-ended answers need to use a small set of choices.
 - **Human-in-the-loop via Slack or Zyk dashboard only.** Workflows can pause for a human response via Slack buttons or the Zyk task UI. Waiting for input from other systems (e.g. a Trello comment, an email reply) requires polling those APIs yourself.
 - **No code sandboxing.** Generated workflows run with full Node.js permissions and inherit the server's environment variables. This is the right tradeoff for single-team use; it's not appropriate for untrusted multi-user environments.
 - **Webhook trigger is unauthenticated.** `POST /webhook/:id` accepts requests from anywhere — the workflow ID is the only protection. Use a reverse proxy or add signature verification for sensitive workflows.
+
+---
+
+## Roadmap
+
+- **Workflow versioning.** Git-backed version history for workflow code — diff, rollback, and audit trail per workflow.
+- **Rich human tasks.** Forms with text input, file upload, and multi-step interactions beyond button choices.
+- **AI agents.** First-class support for multi-step agentic loops — tool use, sub-agents, handoffs between agents — beyond single LLM calls.
 
 ---
 
