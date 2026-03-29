@@ -37,6 +37,8 @@ Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and t
 
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
+> **Want automatic updates?** Railway template deployments start from a snapshot and don't track the source repo. To get updates when new versions are released: open the `zyk` service → **Settings → Source → Connect Repo** → select your fork or the upstream repo + `main` branch. Railway will redeploy on every push.
+
 Once deployed:
 1. Copy your `ZYK_API_KEY` from the `zyk` Railway service's **Variables** tab — you'll need it in the next step.
 2. Copy your Zyk MCP Server URL from the `zyk` Railway service's **Settings > Networking > Public URL**. It looks like `https://<zyk>.up.railway.app`.

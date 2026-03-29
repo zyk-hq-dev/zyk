@@ -62,9 +62,10 @@ const surveyFilms = workflow.durableTask({
         body: JSON.stringify({
           correlationId,
           workflowName: "star-wars-george-lucas-survey",
-          message: `Do you like "${film.title}" (Episode ${film.episode_id}, ${film.release_date.slice(0, 4)})? You have 1 minute to respond — no answer assumes "no".`,
+          message: `Do you like "${film.title}" (Episode ${film.episode_id}, ${film.release_date.slice(0, 4)})?`,
           options: ["yes", "no"],
-          timeoutSeconds: 60, // server auto-fires "no" after 60s if unanswered
+          timeoutSeconds: 60,
+          defaultAnswer: "no",
         }),
       });
 
@@ -101,7 +102,6 @@ workflow.task({
     ];
 
     for (const line of lines) await ctx.log(line);
-
     return { summary: lines.join("\n"), decisions };
   },
 });
