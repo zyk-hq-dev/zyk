@@ -63,7 +63,7 @@ Pick one — you only need to configure the Claude client you use:
 }
 ```
 
-`npx` runs a tiny local stdio/HTTP bridge. Node.js must be installed, nothing else.
+`npx` runs a tiny local stdio/HTTP bridge. [Node.js](https://nodejs.org) must be installed, nothing else.
 
 Fully quit and restart Claude after saving.
 
