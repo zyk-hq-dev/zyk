@@ -201,7 +201,11 @@ Fetches all George Lucas Star Wars films from the public SWAPI API. For each fil
 
 **Prompt:**
 
-> *"Fetch all Star Wars films directed by George Lucas from the SWAPI API. For each film ask me if I like it, wait up to 1 minute for my answer, if I don't answer assume no, log the decision. At the end summarize."*
+```
+Fetch all Star Wars films directed by George Lucas from the SWAPI API.
+For each film ask me if I like it, wait up to 1 minute for my answer,
+if I don't answer assume no, log the decision. At the end summarize.
+```
 
 **Full workflow code:** [`examples/star-wars-survey.ts`](./examples/star-wars-survey.ts)
 
@@ -213,12 +217,18 @@ Triggered by a webhook when a GitHub issue is opened. Assesses severity with Cla
 
 **Prompt:**
 
-> *"Create a workflow called "github-issue-incident-triage" with these steps:*
-> *1. Trigger: a GitHub issue is opened with a critical or production label*
-> *2. Call the Anthropic API to assess severity (critical / high / medium / low) and produce a short summary and impact statement*
-> *3. Draft a Slack message for #incidents with clearly labeled fields: severity level, issue link and number, labels, author, AI-generated summary, potential impact, and severity reasoning*
-> *4. If severity is critical, pause and ask me for approval before posting*
-> *5. On approval, post the message to the Slack channel in `SLACK_CHANNEL`"*
+```
+Create a workflow called "github-issue-incident-triage" with these steps:
+
+1. Trigger: a GitHub issue is opened with a critical or production label
+2. Call the Anthropic API to assess severity (critical / high / medium / low)
+   and produce a short summary and impact statement
+3. Draft a Slack message for #incidents with clearly labeled fields:
+   severity level, issue link and number, labels, author,
+   AI-generated summary, potential impact, and severity reasoning
+4. If severity is critical, pause and ask me for approval before posting
+5. On approval, post the message to the Slack channel in SLACK_CHANNEL
+```
 
 **Required environment variables:**
 
