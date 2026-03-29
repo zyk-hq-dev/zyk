@@ -203,8 +203,15 @@ Fetches all George Lucas Star Wars films from the public SWAPI API. For each fil
 
 ```
 Fetch all Star Wars films directed by George Lucas from the SWAPI API.
-For each film ask me if I like it, wait up to 1 minute for my answer,
-if I don't answer assume no, log the decision. At the end summarize.
+
+For each film:
+- Ask me if I like the film
+- Wait up to 1 minute for my answer
+- If I don't answer, assume "no"
+- Log the decision
+
+At the end:
+- Summarize all my decisions
 ```
 
 **Full workflow code:** [`examples/star-wars-survey.ts`](./examples/star-wars-survey.ts)
