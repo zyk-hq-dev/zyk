@@ -189,7 +189,9 @@ The simplest human-in-the-loop workflow. Good first workflow to run after setup.
 
 **Prompt:**
 
-> *"Create a workflow that asks me what my favourite colour is and logs my answer"*
+```
+Create a workflow that asks me what my favourite colour is and logs my answer
+```
 
 **Full workflow code:** [`examples/favourite-colour.ts`](./examples/favourite-colour.ts)
 
