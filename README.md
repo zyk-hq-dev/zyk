@@ -298,6 +298,19 @@ Common secrets:
 
 Any variable you add is automatically available in generated workflow code.
 
+### Slack setup
+
+If you want workflows that post to Slack, you need a Slack app with a bot token. One-time setup:
+
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From scratch**
+2. Under **OAuth & Permissions → Scopes → Bot Token Scopes**, add `chat:write`
+3. Click **Install to Workspace** at the top of the same page — approve the permission request
+4. Copy the **Bot User OAuth Token** (`xoxb-...`) — this is your `SLACK_BOT_TOKEN`
+5. In Slack, open the channel you want to post to and type `/invite @<your-app-name>` — **the bot must be a member of the channel or it can't post**
+6. Get the channel ID: click the channel name at the top → scroll to the bottom of the popup — the ID looks like `C01234ABCDE`. Set this as `SLACK_CHANNEL`.
+
+For workflows with interactive buttons (e.g. approval flows), also set the **Interactivity Request URL** in your Slack app under **Interactivity & Shortcuts** to `https://<zyk>.up.railway.app/slack/interactions`, and copy the **Signing Secret** from **Basic Information** as `SLACK_SIGNING_SECRET`.
+
 ---
 
 ## Environment variables
