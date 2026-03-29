@@ -164,8 +164,8 @@ The dashboard is protected by your `ZYK_API_KEY`.
 | `delete_workflow` | Remove a workflow from Zyk and Hatchet, stop its worker |
 | `get_tasks` | List pending tasks waiting for your input |
 | `respond_task` | Submit your answer to a pending task |
-| `list_templates` | Browse pre-built workflow templates _(requires `ZYK_API_KEY`)_ |
-| `use_template` | Pull a template's full code ready to deploy _(requires `ZYK_API_KEY`)_ |
+| `list_examples` | Browse built-in example workflows ready to deploy |
+| `use_example` | Pull an example's full code ready to deploy |
 | `review_workflow` | AI-assisted code quality review _(requires `ZYK_API_KEY`)_ |
 
 Webhook trigger (no Claude required):
@@ -176,6 +176,76 @@ Content-Type: application/json
 
 { ...your params... }
 ```
+
+---
+
+## Example workflows
+
+### Favourite Colour _(no secrets required)_
+
+The simplest human-in-the-loop workflow. Good first workflow to run after setup.
+
+**Prompt:**
+
+> *"Create a workflow that asks me what my favourite colour is and logs my answer"*
+
+**Full workflow code:** [`examples/favourite-colour.ts`](./examples/favourite-colour.ts)
+
+---
+
+### Star Wars Survey _(no secrets required)_
+
+Fetches all George Lucas Star Wars films from the public SWAPI API. For each film, asks if you like it and waits up to 1 minute for your answer — defaults to "no" on timeout. Summarizes all decisions at the end.
+
+**Prompt:**
+
+> *"Fetch all Star Wars films directed by George Lucas from the SWAPI API. For each film ask me if I like it, wait up to 1 minute for my answer, if I don't answer assume no, log the decision. At the end summarize."*
+
+**Full workflow code:** [`examples/star-wars-survey.ts`](./examples/star-wars-survey.ts)
+
+---
+
+### GitHub Issue Incident Triage
+
+Triggered by a webhook when a GitHub issue is opened. Assesses severity with Claude, drafts a Slack alert for `#incidents`, and pauses for human approval before posting if the issue is critical.
+
+**Prompt:**
+
+> *"Create a workflow called "github-issue-incident-triage" with these steps:*
+> *1. Trigger: a GitHub issue is opened with a critical or production label*
+> *2. Call the Anthropic API to assess severity (critical / high / medium / low) and produce a short summary and impact statement*
+> *3. Draft a Slack message for #incidents with clearly labeled fields: severity level, issue link and number, labels, author, AI-generated summary, potential impact, and severity reasoning*
+> *4. If severity is critical, pause and ask me for approval before posting*
+> *5. On approval, post the message to the Slack channel in `SLACK_CHANNEL`"*
+
+**Required environment variables:**
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | For Claude severity assessment |
+| `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope |
+| `SLACK_CHANNEL` | Target channel ID, e.g. `C01234ABCDE` |
+
+**Trigger** — point a GitHub webhook at Zyk (repo Settings → Webhooks → Add webhook, select "Issues" events):
+
+```
+POST https://<zyk>.up.railway.app/webhook/<workflow_id>
+Content-Type: application/json
+
+{
+  "action": "opened",
+  "issue": {
+    "number": 99,
+    "title": "Payment service returning 500s in production",
+    "body": "...",
+    "html_url": "https://github.com/org/repo/issues/99",
+    "labels": [{ "name": "critical" }, { "name": "production" }],
+    "user": { "login": "username" }
+  }
+}
+```
+
+**Full workflow code:** [`examples/github-issue-incident-triage.ts`](./examples/github-issue-incident-triage.ts)
 
 ---
 
@@ -255,55 +325,6 @@ Give it 30-60 seconds on first boot (database migration). If it stays unhealthy,
 ### Workflows lost after redeploy
 
 The persistent volume isn't attached. Go to the zyk service, then Volumes, then add a volume at `/app/workflows`.
-
----
-
-## Example workflows
-
-### GitHub Issue Incident Triage
-
-Triggered by a webhook when a GitHub issue is opened. Assesses severity with Claude, drafts a Slack alert for `#incidents`, and pauses for human approval before posting if the issue is critical.
-
-**Prompt — paste this into Claude to create the workflow:**
-
-> Create a workflow called "github-issue-incident-triage" with these steps:
->
-> 1. Trigger: a GitHub issue is opened with a critical or production label
-> 2. Call the Anthropic API to assess severity (critical / high / medium / low) and produce a short summary and impact statement
-> 3. Draft a Slack message for #incidents with clearly labeled fields: severity level, issue link and number, labels, author, AI-generated summary, potential impact, and severity reasoning
-> 4. If severity is critical, pause and ask me for approval before posting
-> 5. On approval, post the message to the Slack channel in `SLACK_CHANNEL`
-
-**Required environment variables:**
-
-| Variable | Description |
-|----------|-------------|
-| `ANTHROPIC_API_KEY` | For Claude severity assessment |
-| `SLACK_BOT_TOKEN` | `xoxb-...` token with `chat:write` scope |
-| `SLACK_CHANNEL` | Target channel ID, e.g. `C01234ABCDE` (see above for how to find it) |
-
-**Trigger** — point a GitHub webhook at Zyk (repo Settings → Webhooks → Add webhook, select "Issues" events), or use a GitHub Actions step:
-
-```
-POST https://<zyk>.up.railway.app/webhook/<workflow_id>
-Content-Type: application/json
-
-{
-  "action": "opened",
-  "issue": {
-    "number": 99,
-    "title": "Payment service returning 500s in production",
-    "body": "...",
-    "html_url": "https://github.com/org/repo/issues/99",
-    "labels": [{ "name": "critical" }, { "name": "production" }],
-    "user": { "login": "username" }
-  }
-}
-```
-
-This is GitHub's native webhook payload shape — no transformation needed.
-
-**Full workflow code:** [`examples/github-issue-incident-triage.ts`](./examples/github-issue-incident-triage.ts)
 
 ---
 
