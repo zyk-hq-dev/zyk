@@ -588,7 +588,8 @@ const askUser = workflow.durableTask({
 - **Always use `workflow.durableTask()`** — never `workflow.task()` for interactive steps
 - **ALWAYS set `workflowName`** in the `/interact/ask` body — required for the task to appear in the dashboard and be cleaned up on workflow delete
 - `options` is optional; omit it for free-text answers, include it for button choices
-- Always pass `timeoutSeconds` matching `executionTimeout` so the dashboard auto-removes expired tasks
+- **ALWAYS pass `timeoutSeconds`** matching `executionTimeout` in seconds (e.g. `executionTimeout: '24h'` → `timeoutSeconds: 86400`). The server uses this to auto-fire the event with the default answer if the user doesn't respond — without it `ctx.waitForEvent` hangs forever.
+- When the prompt specifies a **per-item timeout** shorter than the task `executionTimeout` (e.g. "wait 1 minute per question"), pass that shorter value as `timeoutSeconds` (e.g. `timeoutSeconds: 60`) — the server auto-answers after that many seconds
 - **NEVER call `/interact/ask` to display results or summaries** — use `ctx.log()` for output-only content. `/interact/ask` is ONLY for questions requiring a user response.
 - **No icons or emoji anywhere in workflow code** — not in `message`, not in `options`, not in `ctx.log()` strings. Plain text only.
 

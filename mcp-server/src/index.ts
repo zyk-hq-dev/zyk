@@ -85,7 +85,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "    const base = process.env.ZYK_WEBHOOK_BASE ?? `http://localhost:${process.env.PORT ?? '3100'}`;\n" +
         "    await fetch(`${base}/interact/ask`, {\n" +
         "      method: 'POST', headers: { 'Content-Type': 'application/json' },\n" +
-        "      body: JSON.stringify({ correlationId, workflowName: 'my-workflow', message: 'Do you approve?', options: ['yes', 'no'] }),\n" +
+        "      body: JSON.stringify({ correlationId, workflowName: 'my-workflow', message: 'Do you approve?', options: ['yes', 'no'], timeoutSeconds: 86400 }),\n" +
         "    });\n" +
         "    await ctx.log(`Waiting for user input (id=${correlationId})`);\n" +
         "    await ctx.waitForEvent(correlationId); // signals user responded — carries no payload\n" +
@@ -115,9 +115,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         "```\n" +
         "RULES: (1) Always use workflow.durableTask() — never workflow.task() — for steps that wait for input. " +
         "(2) ctx.waitForEvent(correlationId) suspends the step durably — no polling, no timeout tricks. " +
-        "(3) executionTimeout: '24h' sets the maximum wait time. " +
+        "(3) executionTimeout on the durableTask sets the maximum total wait time — set it to match the longest you'd ever wait. " +
         "(4) Still call POST /interact/ask for native interactions so the question appears in the Zyk dashboard. " +
-        "(5) For Slack: set block_id on the actions block to the correlationId — that's what Zyk uses to match the click.\n" +
+        "(5) ALWAYS pass timeoutSeconds in the /interact/ask body — it must match executionTimeout in seconds (e.g. executionTimeout: '24h' → timeoutSeconds: 86400). The server uses this to auto-fire the event with the default answer if the user doesn't respond in time, so ctx.waitForEvent resolves automatically. Without timeoutSeconds the workflow hangs forever. " +
+        "(6) When the prompt specifies a per-item timeout shorter than the task executionTimeout (e.g. 'wait 1 minute per question'), pass that shorter value as timeoutSeconds (e.g. timeoutSeconds: 60) — the server will auto-answer after that many seconds if the user doesn't respond. " +
+        "(7) For Slack: set block_id on the actions block to the correlationId — that's what Zyk uses to match the click.\n" +
         "\n\nGITHUB WEBHOOK TRIGGER PATTERN — when the trigger is a GitHub event (issue opened, PR, push, etc.), the workflow receives GitHub's native webhook payload. NEVER invent a custom input interface like IssueInput with fields like issueTitle or issueBody — those will always be undefined. Use this exact interface and mapping pattern:\n" +
         "```typescript\n" +
         "interface GitHubIssueWebhook {\n" +
