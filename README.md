@@ -356,6 +356,16 @@ The worker subprocess couldn't connect to Hatchet. Check:
 
 Give it 30-60 seconds on first boot (database migration). If it stays unhealthy, check Railway logs. The most common cause is `DATABASE_URL` not set correctly.
 
+### A workflow runs but nothing happens (no task, no Slack message)
+
+The workflow likely failed mid-run. Open the **Hatchet UI** → **Runs** → find your run → click into it to see which step failed and the error message. Common causes:
+
+- **401 from Anthropic** — `ANTHROPIC_API_KEY` is missing or wrong in Railway Variables
+- **Slack API error** — `SLACK_BOT_TOKEN` is invalid, or the bot hasn't been invited to the channel
+- **Worker not connected** — the step never started; check that the workflow's worker shows as healthy in the Zyk dashboard
+
+Hatchet is the source of truth for what went wrong — always check there first when a run doesn't behave as expected.
+
 ### Workflows lost after redeploy
 
 The persistent volume isn't attached. Go to the zyk service, then Volumes, then add a volume at `/app/workflows`.
