@@ -549,7 +549,7 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       <div id="wf-empty" class="empty" style="display:none">
         <div class="empty-icon">🤖</div>
         <div class="empty-title">No workflows yet</div>
-        <div class="empty-hint">Ask Claude to create one — <code>create a daily Slack summary</code></div>
+        <div class="empty-hint">Ask Claude to create one — <code>create a workflow that asks me what my favourite colour is and logs my answer</code></div>
       </div>
       <!-- Workflow detail view -->
       <div id="wf-view" style="display:none;flex:1;flex-direction:column;overflow:hidden">
