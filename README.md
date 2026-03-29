@@ -90,7 +90,7 @@ Fully quit and restart Claude after saving.
 **Check the dashboards** — open both URLs from your Railway project's **Settings > Networking > Public URL**:
 
 - **Zyk dashboard** (`https://<zyk>.up.railway.app`) — should load and show an empty workflow list
-- **Hatchet UI** (`https://<hatchet-lite>.up.railway.app`) — should load and show a healthy engine. Default login: `admin@example.com` / `Admin123!!`
+- **Hatchet UI** (`https://<hatchet-lite>.up.railway.app`) — should load and show a healthy engine. Default login: `admin@example.com` / `Admin123!!` — **change this password after first login** (Settings → Your Profile) since the default is public knowledge.
 
 **Check Claude** — ask: *"List my workflows"*
 
