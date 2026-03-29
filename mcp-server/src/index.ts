@@ -36,8 +36,8 @@ import { listWorkflowsTool, listWorkflowsSchema } from "./tools/list-workflows.j
 import { listRuns, listRunsSchema } from "./tools/list-runs.js";
 import { deleteWorkflowTool, deleteWorkflowSchema } from "./tools/delete-workflow.js";
 import { updateWorkflowTool, updateWorkflowSchema } from "./tools/update-workflow.js";
-import { listTemplatesTool, listTemplatesSchema } from "./tools/list-templates.js";
-import { useTemplateTool, useTemplateSchema } from "./tools/use-template.js";
+import { listExamplesTool, listExamplesSchema } from "./tools/list-examples.js";
+import { useExampleTool, useExampleSchema } from "./tools/use-example.js";
 import { reviewWorkflowTool, reviewWorkflowSchema } from "./tools/review-workflow.js";
 import { restoreWorkersOnStartup } from "./hatchet/register.js";
 import { stopAllWorkers } from "./hatchet/worker.js";
@@ -362,24 +362,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
-      name: "list_templates",
+      name: "list_examples",
       description:
-        "List pre-built workflow templates from the Zyk library. Requires ZYK_API_KEY.",
+        "List built-in example workflows you can deploy immediately. No API key required.",
       inputSchema: { type: "object", properties: {} },
     },
     {
-      name: "use_template",
+      name: "use_example",
       description:
-        "Fetch the full code for a workflow template so you can deploy it with create_workflow. Requires ZYK_API_KEY.",
+        "Fetch the full code for an example workflow so you can deploy it with create_workflow.",
       inputSchema: {
         type: "object",
         properties: {
-          template_id: {
+          example_id: {
             type: "string",
-            description: "The template ID from list_templates",
+            description: "The example ID from list_examples",
           },
         },
-        required: ["template_id"],
+        required: ["example_id"],
       },
     },
     {
@@ -453,14 +453,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         result = await respondTaskTool(input);
         break;
       }
-      case "list_templates": {
-        const input = listTemplatesSchema.parse(args);
-        result = await listTemplatesTool(input);
+      case "list_examples": {
+        const input = listExamplesSchema.parse(args);
+        result = await listExamplesTool(input);
         break;
       }
-      case "use_template": {
-        const input = useTemplateSchema.parse(args);
-        result = await useTemplateTool(input);
+      case "use_example": {
+        const input = useExampleSchema.parse(args);
+        result = await useExampleTool(input);
         break;
       }
       case "review_workflow": {

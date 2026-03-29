@@ -1295,6 +1295,16 @@ async function handleRequest(
       askedAt: new Date().toISOString(),
       expiresAt,
     });
+    // Auto-fire "no" after timeout so ctx.waitForEvent resolves even without user input.
+    // Only fires if the user hasn't already answered (hasPendingQuestion check).
+    if (timeoutSeconds) {
+      setTimeout(() => {
+        if (hasPendingQuestion(correlationId)) {
+          consumePendingQuestion(correlationId);
+          storeInteractionAnswer(correlationId, "no");
+        }
+      }, timeoutSeconds * 1000).unref();
+    }
     sendJson(res, 200, { ok: true });
     return;
   }
