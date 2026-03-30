@@ -33,7 +33,7 @@ Open source, self-hosted on Railway. **Zero vendor lock-in.** Your workflows are
 
 Click the button below. Railway will provision PostgreSQL, Hatchet Engine, and the Zyk MCP Server automatically. `ZYK_API_KEY` is auto-generated during deploy — no preparation needed.
 
-[![Deploy on Railway](https://railway.com/button.svg)](#)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/zyk)
 
 Everything else (Hatchet token, internal networking, persistent volume) is configured automatically.
 
