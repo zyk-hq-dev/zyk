@@ -1,6 +1,6 @@
 # Zyk — Claude-native workflow automation
 
-> **Alpha coming soon.** This repository is not yet released. Star it to follow along — we'll be opening access shortly.
+> **Alpha is live now 🎉** — early stage, not production-ready. Star the repo and follow along as we ship.
 > Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
 
 **Built for Claude, not bolted onto it.**
