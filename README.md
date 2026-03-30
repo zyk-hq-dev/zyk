@@ -1,15 +1,15 @@
-# Zyk — Claude-native workflow automation
+# Zyk: Claude-native workflow automation
 
-> **Alpha is live now 🎉** — early stage, not production-ready. Star the repo and follow along as we ship.
+> **Alpha is live now 🎉** Early stage, not production-ready. Star the repo and follow along as we ship.
 > Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
 
 **Built for Claude, not bolted onto it.**
 
 Most workflow tools add AI as an afterthought. Zyk is different: you create, manage, and operate workflows entirely through conversation. Describe what you want, Claude generates real TypeScript and deploys it on Hatchet with retries, scheduling, and human-in-the-loop built in. When a workflow needs a human decision, answer it in Claude or in the Zyk dashboard and it resumes automatically. No node editors, no connectors to configure.
 
-Open source, self-hosted on Railway. **Zero vendor lock-in** — your workflows are plain TypeScript files you own. If you ever outgrow Zyk, you can run them directly on Hatchet without changing a line of code.
+Open source, self-hosted on Railway. **Zero vendor lock-in.** Your workflows are plain TypeScript files you own. If you ever outgrow Zyk, you can run them directly on Hatchet without changing a line of code.
 
-**Learn more** — [zyk.dev](https://zyk.dev) · **Questions or feedback** — [hello@zyk.dev](mailto:hello@zyk.dev)
+**Learn more:** [zyk.dev](https://zyk.dev) · **Questions or feedback:** [hello@zyk.dev](mailto:hello@zyk.dev)
 
 ---
 
