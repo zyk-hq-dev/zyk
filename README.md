@@ -166,6 +166,7 @@ The dashboard is protected by your `ZYK_API_KEY`.
 | `delete_workflow` | Remove a workflow from Zyk and Hatchet, stop its worker |
 | `get_tasks` | List pending tasks waiting for your input |
 | `respond_task` | Submit your answer to a pending task |
+| `get_workflow` | Read the full source code of a registered workflow |
 | `list_examples` | Browse built-in example workflows ready to deploy |
 | `use_example` | Pull an example's full code ready to deploy |
 | `review_workflow` | AI-assisted code quality review _(requires `ZYK_API_KEY`)_ |
