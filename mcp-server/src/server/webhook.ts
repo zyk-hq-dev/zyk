@@ -899,7 +899,14 @@ function landingPage(_port: number, hatchetUrl: string, apiKey?: string): string
       questionEl.className = 'task-question';
       // Strip basic markdown (bold, italic, backticks) before displaying
       const rawMsg = task.message ?? task.question ?? '';
-      questionEl.textContent = rawMsg.replace(/\\*\\*(.+?)\\*\\*/g, '$1').replace(/\\*(.+?)\\*/g, '$1').replace(/\`(.+?)\`/g, '$1').replace(/\`/g, '');
+      let displayMsg = rawMsg.replace(/\\*\\*(.+?)\\*\\*/g, '$1').replace(/\\*(.+?)\\*/g, '$1').replace(/\`(.+?)\`/g, '$1').replace(/\`/g, '');
+      // If the message has no newlines but contains "Label: value" field patterns,
+      // insert newlines before each field so it reads as a structured list.
+      // Matches things like " Severity:" " Potential Impact:" " Severity Reasoning:"
+      if (!displayMsg.includes('\\n')) {
+        displayMsg = displayMsg.replace(/ ([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*:)/g, '\\n$1');
+      }
+      questionEl.textContent = displayMsg;
       card.appendChild(questionEl);
 
       const options = task.options ?? [];
