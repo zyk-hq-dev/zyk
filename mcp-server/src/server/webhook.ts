@@ -1289,7 +1289,7 @@ async function handleRequest(
     }
     // Strip emojis/icons — keep task text clean
     const stripEmoji = (s: string) =>
-      s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}☀-⛿✀-➿🀄-🧿]/gu, "").replace(/ {2,}/g, " ").trim();
+      s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FEFF}☀-⛿✀-➿🀄-🧿]/gu, "").replace(/ {2,}/g, " ").replace(/\n[ \t]+/g, "\n").trim();
     message = stripEmoji(message);
     if (options) options = options.map(stripEmoji);
     const expiresAt = timeoutSeconds
