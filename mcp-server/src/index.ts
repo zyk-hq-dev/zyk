@@ -39,6 +39,7 @@ import { updateWorkflowTool, updateWorkflowSchema } from "./tools/update-workflo
 import { listExamplesTool, listExamplesSchema } from "./tools/list-examples.js";
 import { useExampleTool, useExampleSchema } from "./tools/use-example.js";
 import { reviewWorkflowTool, reviewWorkflowSchema } from "./tools/review-workflow.js";
+import { getWorkflowTool, getWorkflowSchema } from "./tools/get-workflow.js";
 import { restoreWorkersOnStartup } from "./hatchet/register.js";
 import { stopAllWorkers } from "./hatchet/worker.js";
 import { startWebhookServer, storeInteractionAnswer } from "./server/webhook.js";
@@ -252,7 +253,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "run_workflow",
       description:
-        "Trigger an execution of a registered workflow. Returns a run_id you can use with get_status.",
+        "Trigger an execution of a registered workflow. Returns a run_id you can use with get_status. " +
+        "IMPORTANT: If you did not create this workflow in the current conversation, call get_workflow first to read its code — " +
+        "you need to understand the input shape before you can pass the right params. " +
+        "For GitHub webhook workflows (input.action, input.issue.*), mock the payload as: " +
+        '{ "action": "opened", "issue": { "number": 1, "title": "...", "body": "...", "html_url": "...", "labels": [{ "name": "..." }], "user": { "login": "..." } }, "repository": { "full_name": "owner/repo" } }',
       inputSchema: {
         type: "object",
         properties: {
@@ -289,6 +294,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       name: "list_workflows",
       description: "List all registered workflows and their current worker status (running/stopped). Use list_runs to see actual executions.",
       inputSchema: { type: "object", properties: {} },
+    },
+    {
+      name: "get_workflow",
+      description:
+        "Retrieve the full source code and metadata for a registered workflow. " +
+        "Call this before run_workflow whenever you don't have context from creating the workflow in the current session — " +
+        "you need to read the code to understand what params it expects.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          workflow_id: { type: "string", description: "The workflow ID to retrieve" },
+        },
+        required: ["workflow_id"],
+      },
     },
     {
       name: "list_runs",
@@ -463,6 +482,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "use_example": {
         const input = useExampleSchema.parse(args);
         result = await useExampleTool(input);
+        break;
+      }
+      case "get_workflow": {
+        const input = getWorkflowSchema.parse(args);
+        result = await getWorkflowTool(input);
         break;
       }
       case "review_workflow": {
