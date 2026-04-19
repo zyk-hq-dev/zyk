@@ -3,6 +3,8 @@
 > **Alpha is live now 🎉** Early stage, not production-ready. Star the repo and follow along as we ship.
 > Want to see it in action first? Visit **[zyk.dev](https://zyk.dev)** for demos and early access.
 
+![Zyk Demo](assets/zyk-demo.gif)
+
 **Built for Claude, not bolted onto it.**
 
 Most workflow tools add AI as an afterthought. Zyk is different: you create, manage, and operate workflows entirely through conversation. Describe what you want, Claude generates real TypeScript and deploys it on Hatchet with retries, scheduling, and human-in-the-loop built in. When a workflow needs a human decision, answer it in Claude or in the Zyk dashboard and it resumes automatically. No node editors, no connectors to configure.
