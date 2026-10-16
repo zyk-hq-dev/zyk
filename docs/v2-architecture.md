@@ -374,6 +374,26 @@ docs/                   v2-architecture.md, assistant/
 8. Simulated worker + end-to-end suite (concurrency, crash, stale, invalid results).
 9. Assistant docs + Railway deployment.
 
+### Acceptance status
+
+`npm run test:e2e` → `e2e/acceptance.test.ts` runs the full stack in-process (webhook and MCP
+over HTTP, real Hatchet, the maintenance loop) with simulated assistants (`e2e/support/sim-worker.ts`)
+that work through the MCP tools and act in a fake GitHub/Gmail, following the idempotency
+markers. The fake world counts effects, so duplicates are detectable.
+
+| Criterion | Covered by |
+|---|---|
+| Mail via webhook flows through all steps | acceptance 1: 13 tasks incl. a revise loop and two SLA rounds |
+| Concurrent workers never process the same task | acceptance 1 (chat + scheduled run) and 3 (3 workers, 5 incidents, 50 tasks) |
+| Killed worker → retry after lease expiry, no duplicate effect | acceptance 2: issue created then crash; reaper requeues; attempt 2 finds the marker; still 1 issue |
+| Stale completions rejected; invalid results get helpful errors | acceptance 2 (and unit/MCP tests) |
+| Every step and decision visible via `get_instance` | acceptance 1: steps, decisions with `decided_via`, full history |
+| Manual test with real Claude, real GitHub and Gmail | pending (step 9) |
+
+Lease expiry is simulated by moving `lock_expires_at` into the past; the reaper itself runs for
+real. A mutation check (simulated assistant ignoring the marker) makes acceptance 2 fail with
+two issues, confirming the test detects duplicates.
+
 ## 12. Decision log
 
 | Date | Decision |

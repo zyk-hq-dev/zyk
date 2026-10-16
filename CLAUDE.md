@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine), step 6 (MCP tools, instructions, /zyk-work, API keys), step 7 (webhook trigger).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine), step 6 (MCP tools, instructions, /zyk-work, API keys), step 7 (webhook trigger), step 8 (acceptance suite with simulated assistants).
 
 ## Stack
 

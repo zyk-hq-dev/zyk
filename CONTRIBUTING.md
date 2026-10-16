@@ -76,8 +76,9 @@ npm test
 
 Tests need the Compose Postgres and drop/recreate the `zyk_test` database on every run.
 
-End-to-end tests run the incident-triage playbook on a real Hatchet engine with durations
-scaled down (`ZYK_TIME_SCALE=0.001`):
+End-to-end tests run the full stack — webhook, MCP tools, real Hatchet — with simulated
+assistants acting in a fake GitHub/Gmail, and durations scaled down (`ZYK_TIME_SCALE=0.001`).
+They cover the milestone 1 acceptance criteria and take about two minutes:
 
 ```bash
 docker compose up -d postgres hatchet-engine
