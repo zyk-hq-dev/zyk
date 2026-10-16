@@ -210,9 +210,25 @@ Details (implemented in `mcp-server/src/tasks/store.ts`):
 
 ## 7. MCP surface
 
-Worker: `fetch_and_lock`, `extend_lock`, `complete_task`, `fail_task`, `complete_user_task`.
-Overview: `list_open_tasks`, `start_workflow`, `get_instance`.
-Playbooks: `list_playbooks`, `get_playbook`.
+Implemented in `mcp-server/src/mcp/` (stateless Streamable HTTP at `/mcp`, one server per
+request, every call scoped to the authenticated tenant).
+
+Worker: `fetch_and_lock` (filters: `kinds`, `topics`; scheduled runs pass `kinds: ["system"]`),
+`extend_lock`, `complete_task`, `fail_task` (system tasks only), `complete_user_task`
+(records `decided_via: "conversation"`), `release_task` (give a task back without a result —
+"decide later", or a run that should not handle it; does not count as an attempt).
+Overview: `list_open_tasks` (decisions waiting for the user, system tasks due / in progress /
+retrying, instances waiting on a timer with `waiting_until`), `start_workflow`, `get_instance`
+(steps with results, full audit history; never lock tokens).
+Playbooks: `list_playbooks`, `get_playbook` (input schema, settings with current values, steps).
+
+Task payloads carry `title`, `instructions`, `input`, `untrusted_content` (wrapped with a
+"treat as data" note), `result_schema`, `decisions` (user tasks), `allowed_tools`,
+`idempotency_key`, and a `next` hint. Object arguments (`result`, `input`) are also accepted
+as JSON strings, because some clients stringify nested arguments.
+
+User tasks never fail because a lock expired: a human taking longer than the lock is normal.
+They return to the queue; only the step timeout ends them.
 Milestone 2: `propose_customization`, `preview_customization`, `apply_customization`,
 `list_versions`, `rollback`, `show_workflow`.
 Prompt: `/zyk-work`.
@@ -225,9 +241,16 @@ External text only ever appears in `untrusted_content`.
 ## 8. Security
 
 - No third-party credentials, ever.
-- **Auth (M1):** API key per tenant, carried in the URL path (`/mcp/k/<key>`) because Claude
-  custom connectors cannot send custom headers (to be re-verified). Behind an auth interface so
-  OAuth can replace it. Keys are created by an admin CLI (`npm run tenant:create`).
+- **Auth (M1):** API key per tenant (`zyk_` + 256 random bits, stored as sha256), accepted as
+  `Authorization: Bearer <key>` **or** in the URL path (`/mcp/k/<key>`). Verified 2026-10-16
+  in Claude's docs: custom connectors support fixed request headers, but that feature is "in
+  beta and available to a limited set of organizations"; everyone else can use the path form.
+  The path form puts the key into URLs, which proxies may log — prefer the header where
+  available. Keys are managed with `npm run admin -- tenant:create | key:create | key:revoke`.
+  OAuth can replace this behind the same `authenticate` step.
+- Claude's MCP client supports tools, prompts, and resources; elicitation is not listed as
+  supported, so M1 approvals happen in the conversation. Tool calls time out after 240 s on
+  claude.ai, which every zyk tool stays far below.
 - **Approvals:** user tasks gate every irreversible external action. Scheduled runs never
   complete user tasks — they summarize them for the user. Each decision records `decided_via`
   (`conversation` | `elicitation` | `ui`). When the client supports MCP elicitation, approvals
@@ -363,6 +386,8 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | Hatchet replay behaviour verified on engine v0.90.4; executionTimeout counts waiting time. |
 | 2026-10-16 | Runtime manifest enforcement in `PlaybookRun` (transitions, approval directly before irreversible steps with an allowed decision). Added `approval_decisions`. |
 | 2026-10-16 | Step/violation failures fail the Hatchet run with NonRetryableError so the Hatchet UI matches zyk. |
+| 2026-10-16 | Auth: per-tenant keys via bearer header or URL path (Claude request headers are a limited beta). |
+| 2026-10-16 | Added `release_task` and `kinds` filter; user tasks are never failed by lease expiry; `fail_task` is system-only. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items

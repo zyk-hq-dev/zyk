@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "db:migrate": "tsx src/db/cli.ts migrate",
-    "test:e2e": "vitest run -c vitest.e2e.config.ts"
+    "test:e2e": "vitest run -c vitest.e2e.config.ts",
+    "admin": "node dist/admin/cli.js",
+    "admin:dev": "tsx src/admin/cli.ts"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "^1.17.2",

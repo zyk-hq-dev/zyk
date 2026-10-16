@@ -58,7 +58,6 @@ services:
       HATCHET_HOST_PORT: hatchet-engine:7077
       HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
       ZYK_DATABASE_URL: postgresql://hatchet:hatchet@postgres:5432/zyk
-      ZYK_API_KEY: ${ZYK_API_KEY:-}
     depends_on:
       hatchet-engine:
         condition: service_healthy

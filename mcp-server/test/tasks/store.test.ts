@@ -9,6 +9,7 @@ import {
   failTask,
   fetchAndLock,
   getTask,
+  releaseTask,
   purgeExpiredUntrustedContent,
   reapExpiredLocks,
   retryDelaySeconds,
@@ -485,5 +486,58 @@ describe("purgeExpiredUntrustedContent", () => {
     const after = await getTask(pool, tenant, task.id);
     expect(after.untrusted_content).toBeNull();
     expect(after.untrusted_expires_at).toBeNull();
+  });
+});
+
+// ── kinds, user tasks, release ────────────────────────────────────────────────
+
+describe("user tasks and release", () => {
+  const decisionSchema = {
+    type: "object",
+    required: ["decision"],
+    properties: { decision: { enum: ["approve", "reject"] } },
+  };
+
+  it("filters by kind so unattended runs never lock user tasks", async () => {
+    await createTask(pool, newTask({ kind: "user", stepKey: "confirm", resultSchema: decisionSchema }));
+    await createTask(pool, newTask({ stepKey: "work" }));
+    const system = await fetchAndLock(pool, { tenantId: tenant, workerId: "cron", kinds: ["system"], maxTasks: 5, lockSeconds: 60 });
+    expect(system.map((t) => t.step_key)).toEqual(["work"]);
+    const user = await fetchAndLock(pool, { tenantId: tenant, workerId: "chat", kinds: ["user"], maxTasks: 5, lockSeconds: 60 });
+    expect(user.map((t) => t.step_key)).toEqual(["confirm"]);
+  });
+
+  it("never fails a user task because its lock expired", async () => {
+    await createTask(pool, newTask({ kind: "user", stepKey: "confirm", resultSchema: decisionSchema, maxAttempts: 1 }));
+    for (let i = 0; i < 3; i++) {
+      await claimOne(`chat-${i}`);
+      const r = await reapExpiredLocks(pool, { now: farFuture() });
+      expect(r.requeued).toHaveLength(1);
+      expect(r.failed).toHaveLength(0);
+    }
+  });
+
+  it("refuses fail_task for user tasks and points to release", async () => {
+    await createTask(pool, newTask({ kind: "user", stepKey: "confirm", resultSchema: decisionSchema }));
+    const t = await claimOne();
+    const err = await expectZykError(
+      failTask(pool, { tenantId: tenant, taskId: t.id, lockToken: t.lock_token!, error: "no answer", retryable: false, workerId: "w1" }),
+      "wrong_task_kind"
+    );
+    expect(err.hint).toContain("release_task");
+  });
+
+  it("releases a task back to the queue without counting an attempt", async () => {
+    await createTask(pool, newTask());
+    const t = await claimOne("w1");
+    const released = await releaseTask(pool, { tenantId: tenant, taskId: t.id, lockToken: t.lock_token!, workerId: "w1" });
+    expect(released).toMatchObject({ status: "pending", lock_token: null, attempts: 0 });
+    const again = await claimOne("w2");
+    expect(again.attempts).toBe(1);
+    await expectZykError(
+      releaseTask(pool, { tenantId: tenant, taskId: t.id, lockToken: t.lock_token!, workerId: "w1" }),
+      "stale_lock"
+    );
+    expect(await auditEvents()).toContain("task.released");
   });
 });

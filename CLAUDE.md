@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine), step 6 (MCP tools, instructions, /zyk-work, API keys).
 
 ## Stack
 
@@ -54,6 +54,8 @@ Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + 
   comments, CRM notes) goes in `untrusted_content`, never in `instructions`.
 - **No irreversible external action without an approved user task.** Scheduled runs never
   complete user tasks.
+- **MCP guidance text** lives in `src/mcp/instructions.ts` (server instructions, /zyk-work) and in
+  tool descriptions in `src/mcp/server.ts`. Treat it as product copy.
 - **Errors returned to the assistant must be actionable**: say exactly what is wrong and how
   to fix it.
 - Playbook manifests: `mcp-server/playbooks/<id>/<version>.yaml`. Released versions are
@@ -79,6 +81,7 @@ npm run build      # tsc → dist/
 npm run typecheck  # src + tests
 npm test           # vitest; needs Postgres (drops/recreates zyk_test)
 npm run test:e2e   # real Hatchet; needs HATCHET_CLIENT_TOKEN, scaled durations
+npm run admin -- tenant:create <name>   # tenant + API key (after npm run build)
 npm run db:migrate # create + migrate the zyk DB (the server also does this on start)
 docker compose up -d postgres hatchet-engine   # from repo root
 node scripts/generate-token.js                 # Hatchet API token for .env

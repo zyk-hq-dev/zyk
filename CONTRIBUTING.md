@@ -47,6 +47,19 @@ cd mcp-server && npm run dev
 The server creates and migrates the `zyk` database on start. The MCP endpoint is
 http://localhost:3100/mcp (health check: `/healthz`).
 
+### 5. Create an API key
+
+```bash
+cd mcp-server && npm run build && npm run admin -- tenant:create local-dev
+```
+
+Connect an MCP client with `Authorization: Bearer <key>`, or use
+`http://localhost:3100/mcp/k/<key>` if the client cannot send headers. For Claude Code:
+
+```bash
+claude mcp add --transport http zyk http://localhost:3100/mcp --header "Authorization: Bearer <key>"
+```
+
 ## Tests
 
 ```bash

@@ -152,6 +152,8 @@ export interface FetchAndLockParams {
   tenantId: string;
   workerId: string;
   topics?: string[];
+  /** Restrict to system or user tasks, e.g. scheduled runs fetch only system tasks. */
+  kinds?: TaskKind[];
   maxTasks: number;
   lockSeconds: number;
 }
@@ -161,6 +163,7 @@ export async function fetchAndLock(pool: Pool, p: FetchAndLockParams): Promise<T
   if (p.maxTasks < 1) throw invalidArgument("max_tasks must be at least 1");
   if (p.lockSeconds < 1) throw invalidArgument("lock_seconds must be at least 1");
   const topics = p.topics && p.topics.length > 0 ? p.topics : null;
+  const kinds = p.kinds && p.kinds.length > 0 ? p.kinds : null;
 
   return withTransaction(pool, async (client) => {
     const { rows } = await client.query<TaskRow>(
@@ -177,11 +180,12 @@ export async function fetchAndLock(pool: Pool, p: FetchAndLockParams): Promise<T
              AND status = 'pending'
              AND due_at <= now()
              AND ($4::text[] IS NULL OR topic = ANY($4))
+             AND ($6::text[] IS NULL OR kind = ANY($6))
            ORDER BY due_at, created_at
            LIMIT $5
            FOR UPDATE SKIP LOCKED)
        RETURNING t.*`,
-      [p.tenantId, p.workerId, p.lockSeconds, topics, p.maxTasks]
+      [p.tenantId, p.workerId, p.lockSeconds, topics, p.maxTasks, kinds]
     );
     rows.sort((a, b) => a.due_at.getTime() - b.due_at.getTime());
     for (const task of rows) {
@@ -392,6 +396,13 @@ export interface FailTaskParams {
 export async function failTask(pool: Pool, p: FailTaskParams): Promise<ResolveOutcome> {
   return withTransaction(pool, async (client) => {
     const task = await loadTask(client, p.tenantId, p.taskId);
+    if (task.kind === "user") {
+      throw new ZykError(
+        "wrong_task_kind",
+        `Task ${task.id} is a user task and cannot fail.`,
+        "If the user cannot answer now, call release_task; the task stays open and is offered again."
+      );
+    }
     if (checkLock(task, p.lockToken, "fail") === "repeat") return { task, repeated: true };
 
     const retry = p.retryable && task.attempts < task.max_attempts;
@@ -421,6 +432,44 @@ export async function failTask(pool: Pool, p: FailTaskParams): Promise<ResolveOu
   });
 }
 
+// ── Release ───────────────────────────────────────────────────────────────────
+
+export interface ReleaseTaskParams {
+  tenantId: string;
+  taskId: string;
+  lockToken: string;
+  workerId: string;
+}
+
+/**
+ * Gives the task back without a result (e.g. the user wants to answer later, or a scheduled run
+ * fetched a task it should not do). It is offered again immediately. Does not count as failure:
+ * the claim's attempt is returned.
+ */
+export async function releaseTask(pool: Pool, p: ReleaseTaskParams): Promise<TaskRow> {
+  return withTransaction(pool, async (client) => {
+    const task = await loadTask(client, p.tenantId, p.taskId);
+    checkLock(task, p.lockToken, "extend");
+    const { rows } = await client.query<TaskRow>(
+      `UPDATE tasks
+          SET status = 'pending', lock_token = NULL, lock_expires_at = NULL,
+              attempts = GREATEST(attempts - 1, 0), updated_at = now()
+        WHERE id = $1 AND tenant_id = $2 AND status = 'locked' AND lock_token = $3
+       RETURNING *`,
+      [p.taskId, p.tenantId, p.lockToken]
+    );
+    if (rows.length === 0) return raceLost(client, p.tenantId, p.taskId, p.lockToken, "extend");
+    await appendAudit(client, {
+      tenantId: p.tenantId,
+      instanceId: task.instance_id,
+      taskId: task.id,
+      actor: { type: "worker", id: p.workerId },
+      event: "task.released",
+    });
+    return rows[0];
+  });
+}
+
 // ── Maintenance ───────────────────────────────────────────────────────────────
 
 export interface ReapResult {
@@ -429,8 +478,10 @@ export interface ReapResult {
 }
 
 /**
- * Releases locks that expired before `now` (default: DB clock). Tasks with attempts left go back
- * to `pending`; the rest fail with `lease_expired`. Safe to run on several replicas at once.
+ * Releases locks that expired before `now` (default: DB clock). System tasks with attempts left
+ * go back to `pending`; the rest fail with `lease_expired`. User tasks always go back to
+ * `pending` — a human taking longer than the lock is not a failure; the step timeout bounds them.
+ * Safe to run on several replicas at once.
  */
 export async function reapExpiredLocks(pool: Pool, opts: { now?: Date } = {}): Promise<ReapResult> {
   return withTransaction(pool, async (client) => {
@@ -440,12 +491,12 @@ export async function reapExpiredLocks(pool: Pool, opts: { now?: Date } = {}): P
           WHERE status = 'locked' AND lock_expires_at < COALESCE($1, now())
           FOR UPDATE SKIP LOCKED)
        UPDATE tasks t
-          SET status = CASE WHEN t.attempts >= t.max_attempts THEN 'failed' ELSE 'pending' END,
-              error = CASE WHEN t.attempts >= t.max_attempts
+          SET status = CASE WHEN t.kind = 'system' AND t.attempts >= t.max_attempts THEN 'failed' ELSE 'pending' END,
+              error = CASE WHEN t.kind = 'system' AND t.attempts >= t.max_attempts
                            THEN jsonb_build_object('message', 'Lock expired on the final attempt',
                                                    'code', 'lease_expired', 'attempt', t.attempts)
                            ELSE t.error END,
-              completed_at = CASE WHEN t.attempts >= t.max_attempts THEN now() END,
+              completed_at = CASE WHEN t.kind = 'system' AND t.attempts >= t.max_attempts THEN now() END,
               lock_token = NULL, lock_expires_at = NULL, updated_at = now()
          FROM expired
         WHERE t.id = expired.id
