@@ -56,6 +56,7 @@ export function minimalManifest(): PlaybookManifest {
         timeout: "1d",
         irreversible: true,
         requires_approval: "approve",
+        approval_decisions: ["send"],
         idempotency_key: "test:{{external_key}}:send",
         instructions: "Send it.",
         result_schema: { type: "object" },

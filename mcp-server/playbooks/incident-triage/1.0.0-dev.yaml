@@ -332,6 +332,7 @@ steps:
     timeout: 1d
     irreversible: true
     requires_approval: approve_ack
+    approval_decisions: [send]
     idempotency_key: "incident:{{external_key}}:send_ack"
     allowed_tools: [gmail.send_draft, gmail.search]
     instructions: |-
@@ -368,9 +369,9 @@ steps:
     instructions: |-
       Look up the GitHub issue (input `issue_number`) and report:
       - state: open or closed
-      - has_activity: true if, since the time in input `since`, anyone other than zyk's own
-        escalation comments has commented, pushed a linked commit or pull request, or changed
-        the assignee, labels, or state
+      - has_activity: true if, within the last `activity_window` (from the input, e.g. `1d`),
+        anyone has commented (ignore comments containing a `zyk:` marker), linked a commit or
+        pull request, or changed the assignee, labels, or state
       - assignee: the current assignee's login, if any
       - resolution_summary: only when closed — two or three plain sentences on how it was
         resolved, based on the closing comment or linked pull request
@@ -389,6 +390,7 @@ steps:
       - { to: draft_resolution, label: closed }
       - { to: wait_sla, label: "open, active" }
       - { to: escalate, label: "open, inactive" }
+      - { to: review_escalation, label: "inactive, notify user only" }
       - { to: end_stale, label: rounds exhausted }
 
   escalate:
@@ -499,6 +501,7 @@ steps:
     timeout: 1d
     irreversible: true
     requires_approval: approve_resolution
+    approval_decisions: [send]
     idempotency_key: "incident:{{external_key}}:send_resolution"
     allowed_tools: [gmail.send_draft, gmail.search]
     instructions: |-

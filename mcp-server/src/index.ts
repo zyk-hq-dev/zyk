@@ -9,7 +9,9 @@ import { ensureHatchetToken } from "./hatchet/bootstrap.js";
 import { databaseUrl, ensureDatabase, getPool } from "./db/pool.js";
 import { migrate } from "./db/migrate.js";
 import { startMaintenance } from "./tasks/store.js";
-import { loadPlaybooks, registerPlaybooks } from "./playbooks/loader.js";
+import { loadPlaybooks, PlaybookCatalog, registerPlaybooks } from "./playbooks/loader.js";
+import { assertDefinitionsFor } from "./playbooks/registry.js";
+import { startHatchetEngine, type Engine } from "./engine/hatchet.js";
 
 // ── MCP server factory ────────────────────────────────────────────────────────
 // Stateless: each POST gets its own server + transport (SDK allows one connect per server).
@@ -87,6 +89,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
 // ── Startup ───────────────────────────────────────────────────────────────────
 
+// Set once the Hatchet worker is up. Used by the MCP tools (step 6).
+let engine: Engine | null = null;
+export function getEngine(): Engine | null {
+  return engine;
+}
+
 async function main() {
   const port = parseInt(process.env.PORT ?? "3100", 10);
 
@@ -99,6 +107,8 @@ async function main() {
   const playbooks = loadPlaybooks();
   await registerPlaybooks(getPool(), playbooks);
   console.error(`[playbooks] ${playbooks.map((p) => `${p.manifest.id}@${p.manifest.version}`).join(", ") || "none"}`);
+  const catalog = new PlaybookCatalog(playbooks);
+  assertDefinitionsFor(catalog);
 
   // Lock reaper + untrusted-content retention. Safe on several replicas.
   startMaintenance(getPool());
@@ -112,9 +122,14 @@ async function main() {
     console.error(`zyk listening on http://0.0.0.0:${port}/mcp`);
   });
 
-  ensureHatchetToken().catch((err) => {
-    console.error("Warning: Hatchet bootstrap failed:", err);
-  });
+  // The MCP endpoint stays up while Hatchet is unavailable; tools that need it report that.
+  ensureHatchetToken()
+    .then(() => startHatchetEngine({ pool: getPool(), catalog }))
+    .then((started) => {
+      engine = started;
+      console.error("[engine] Hatchet worker started");
+    })
+    .catch((err) => console.error("Warning: Hatchet engine failed to start:", err));
 }
 
 // The Hatchet SDK starts background gRPC connections that can fail asynchronously.

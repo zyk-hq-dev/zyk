@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine).
 
 ## Stack
 
@@ -42,7 +42,10 @@ Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + 
   TypeScript. External steps run as `zyk-step` child runs. Customizations are data passed as
   input, never new code.
 - **Hatchet durable tasks replay.** All side effects in playbook code must be idempotent
-  (deterministic keys such as `(instance_id, step_key, iteration)`).
+  (deterministic keys such as `(instance_id, step_key, iteration)`; audit `dedupe_key`;
+  monotonic `step_seq`). Control flow must not depend on wall-clock time.
+- **Playbook code only uses `PlaybookRun`** (`src/engine/run.ts`), which enforces the manifest
+  at runtime (declared transitions, approval directly before irreversible steps).
 - **The zyk DB is the source of truth for task state.** Events only wake waiters.
 - **Task claims** are a single `UPDATE … WHERE id IN (SELECT … FOR UPDATE SKIP LOCKED)`.
   Complete/fail/extend must check `lock_token` (fencing). No long-held locks.
@@ -75,6 +78,7 @@ npm run dev        # tsx src/index.ts
 npm run build      # tsc → dist/
 npm run typecheck  # src + tests
 npm test           # vitest; needs Postgres (drops/recreates zyk_test)
+npm run test:e2e   # real Hatchet; needs HATCHET_CLIENT_TOKEN, scaled durations
 npm run db:migrate # create + migrate the zyk DB (the server also does this on start)
 docker compose up -d postgres hatchet-engine   # from repo root
 node scripts/generate-token.js                 # Hatchet API token for .env

@@ -15,13 +15,19 @@ export interface AuditEntry {
   actor: Actor;
   event: string;
   data?: Record<string, unknown>;
+  /** Makes the append idempotent: a second entry with the same key (per tenant) is ignored. */
+  dedupeKey?: string;
 }
 
-/** Appends one entry. Pass the transaction's client so the entry commits with the change. */
-export async function appendAudit(db: PoolClient | Pool, entry: AuditEntry): Promise<void> {
-  await db.query(
-    `INSERT INTO audit_log (tenant_id, instance_id, task_id, actor_type, actor_id, event, data)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+/**
+ * Appends one entry. Pass the transaction's client so the entry commits with the change.
+ * Returns false when an entry with the same dedupe key already existed.
+ */
+export async function appendAudit(db: PoolClient | Pool, entry: AuditEntry): Promise<boolean> {
+  const { rowCount } = await db.query(
+    `INSERT INTO audit_log (tenant_id, instance_id, task_id, actor_type, actor_id, event, data, dedupe_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (tenant_id, dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING`,
     [
       entry.tenantId,
       entry.instanceId ?? null,
@@ -30,8 +36,10 @@ export async function appendAudit(db: PoolClient | Pool, entry: AuditEntry): Pro
       entry.actor.id ?? null,
       entry.event,
       entry.data ?? {},
+      entry.dedupeKey ?? null,
     ]
   );
+  return rowCount === 1;
 }
 
 export interface AuditRow {
@@ -43,6 +51,7 @@ export interface AuditRow {
   actor_id: string | null;
   event: string;
   data: Record<string, unknown>;
+  dedupe_key: string | null;
   at: Date;
 }
 

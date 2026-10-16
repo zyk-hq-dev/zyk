@@ -85,12 +85,28 @@ Each external step runs as a child run of a shared `zyk-step` workflow:
 3. On wake, read the task's status from the zyk DB (source of truth), mark it `consumed`,
    return the result or raise the timeout/failure path.
 
-Every step appears in the Hatchet UI as its own linked run, tagged with its step key. Durable
-waits ("wait 3 days") are durable sleeps in the parent run.
+Every step appears in the Hatchet UI as its own linked run (child key `<step>:<iteration>`,
+metadata `zyk_instance`, `zyk_step`). Durable waits ("wait 3 days") are durable sleeps in the
+parent run. A step that times out cancels its task (holders of the lock get `already_resolved`).
 
-Playbook code calls steps via a typed helper, e.g. `zyk.systemTask(ctx, "triage", input)`,
-which rejects step keys not declared in the manifest. A test asserts that every step the code
-can reach exists in the manifest graph, so the diagram cannot drift from the code.
+Playbook code is written against `PlaybookRun` (`src/engine/run.ts`):
+`systemTask(step, {input, untrusted})`, `userTask(step, …)`, `wait(step, durationKey)`,
+`end(step)`. Its base class enforces the manifest **at runtime**, so code and manifest cannot
+drift:
+
+- every transition must be a declared edge, and the first step must be `start`;
+- an irreversible step must come **immediately after** its approval step with one of its
+  `approval_decisions` — a code bug cannot send mail without approval;
+- task specs (instructions, schema, tools, idempotency key, marker) come only from the
+  manifest; instance input fields in `untrusted_input` are only reachable as `untrustedInput`.
+
+Violations fail the instance (`playbook_violation`). A step that fails or times out fails the
+instance (`step_failed` / `step_cancelled`). In both cases the Hatchet run fails with a
+`NonRetryableError`, so the Hatchet UI shows the same outcome. Infrastructure errors are
+retried by Hatchet (3×); after that the workflow's `onFailure` fails the instance.
+
+Each run first **claims** its instance (`hatchet_run_id`); a duplicate trigger finds another
+run's id and exits. Instances whose trigger was lost are re-triggered after 60 s.
 
 ### 4.3 Event delivery (outbox)
 
@@ -99,20 +115,38 @@ succeeds while the Hatchet publish fails. Mitigation:
 
 - `complete_task` commits the result to Postgres first (with `event_published_at`).
 - The step run sets `consumed_at` when it proceeds.
-- A republisher re-publishes events for tasks that are completed but not consumed after ~30 s.
+- A republisher (every 5 s) publishes resolved, unconsumed tasks of running instances that
+  were never published (after 5 s grace) or were published more than 30 s ago.
 - On every wake, the step run reads status from the DB, never trusting the event payload.
 
 ### 4.4 Replay determinism
 
-Hatchet durable tasks replay from the start after a worker restart. All side effects in
-playbook code must be idempotent (deterministic keys). *To verify early in implementation:
-whether child spawns from a durable task are deduplicated on replay; if not, use deterministic
-child keys.*
+Hatchet durable tasks replay from the start after a worker restart. **Verified against engine
+v0.90.4** (durable event log, engine ≥ v0.80): killing the worker while the parent waited on a
+child made Hatchet reassign both tasks (~25 s); the replayed parent's `spawnChild` returned the
+**existing** child run, and the replayed child re-registered its wait and woke on the event.
+
+Consequences in the code:
+
+- Side effects outside Hatchet primitives are idempotent: tasks are unique per
+  `(instance_id, step_key, iteration)`; progress uses a monotonic `step_seq` (a replay never
+  rewinds `current_step`); audit entries from replayable code carry a `dedupe_key`.
+- Control flow depends only on step outcomes (replayed from Hatchet's log) and pinned instance
+  data — never on wall-clock time. `ctx.now()` is memoized per run and returns the same value on
+  every call, so it is not used; e.g. "activity since the last check" is expressed as
+  "activity within the last <SLA duration>".
+- **`executionTimeout` includes waiting time** (verified). Playbook runs use 8760 h; `zyk-step`
+  uses the longest task timeout plus 1 h.
+- Hatchet's `sleepFor` accepts only h/m/s units; durations are passed in seconds.
 
 ### 4.5 Time control in tests
 
-Unit tests use a thin fake of the zyk step context to test playbook logic in milliseconds.
-End-to-end tests run against real Hatchet with durations shortened via extension points.
+Unit tests run playbook code against `ScriptedRun` (a `TrackedRun` answering steps from
+queues), so every branch is tested in milliseconds with the same runtime checks. End-to-end
+tests (`npm run test:e2e`) run against real Hatchet with `ZYK_TIME_SCALE=0.001` (a 4 h SLA
+takes 14 s) and `HATCHET_CLIENT_NAMESPACE=zyk_e2e`, so a dev server on the same tenant is not
+affected. They cover the full path including a lost event (recovered by the outbox), an engine
+restart mid-run (no duplicate tasks or child runs), and a failing step.
 
 ## 5. Data model (zyk DB)
 
@@ -326,9 +360,15 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | No condition language: branches live in playbook code; toggles are typed extension points. |
 | 2026-10-16 | Manifest rules: instructions reference config only; irreversible steps need an approval step on every path (static graph check); released versions immutable, prereleases mutable. |
 | 2026-10-16 | Incident triage: only outgoing mail is irreversible (approval-gated); GitHub issues and comments in the user's own repo are not gated. Idempotency via markers embedded in created issues/comments. |
+| 2026-10-16 | Hatchet replay behaviour verified on engine v0.90.4; executionTimeout counts waiting time. |
+| 2026-10-16 | Runtime manifest enforcement in `PlaybookRun` (transitions, approval directly before irreversible steps with an allowed decision). Added `approval_decisions`. |
+| 2026-10-16 | Step/violation failures fail the Hatchet run with NonRetryableError so the Hatchet UI matches zyk. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items
 
 - Verify current Claude custom-connector auth options (header vs URL key vs OAuth).
-- Verify Hatchet child-spawn dedupe on durable-task replay.
+- Pin the Hatchet image instead of `hatchet-lite:latest` (local engine is v0.90.4; the engine
+  logs advisory GHSA-phg3-3g28-wq9v recommending ≥ v0.91.2). Decide in step 9.
+- The Hatchet worker runs inside the zyk server process. Splitting it out is possible later
+  (same code, separate entry point) if load requires it.

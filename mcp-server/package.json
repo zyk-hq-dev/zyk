@@ -15,7 +15,8 @@
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
-    "db:migrate": "tsx src/db/cli.ts migrate"
+    "db:migrate": "tsx src/db/cli.ts migrate",
+    "test:e2e": "vitest run -c vitest.e2e.config.ts"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "^1.17.2",

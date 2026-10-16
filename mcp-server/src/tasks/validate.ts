@@ -27,11 +27,11 @@ export function assertValidSchema(schema: object): void {
   compile(schema);
 }
 
-/** Returns human-readable problems; empty when `value` satisfies `schema`. */
-export function validateAgainstSchema(schema: object, value: unknown): string[] {
+/** Returns human-readable problems; empty when `value` satisfies `schema`. `root` names the value. */
+export function validateAgainstSchema(schema: object, value: unknown, root = "result"): string[] {
   const validate = compile(schema);
   if (validate(value)) return [];
-  return describeAjvErrors(validate.errors ?? []);
+  return describeAjvErrors(validate.errors ?? [], root);
 }
 
 /** Readable problems for ajv errors; paths are shown relative to `root`. */

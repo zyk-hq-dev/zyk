@@ -505,10 +505,55 @@ export function startMaintenance(pool: Pool, intervalMs = 15_000): () => void {
   return () => clearInterval(timer);
 }
 
+// ── Engine operations ─────────────────────────────────────────────────────────
+
+/**
+ * Cancels open (pending or locked) tasks — one task, or all of an instance's. Holders of a lock
+ * get `already_resolved` on their next call. Returns the cancelled tasks.
+ */
+export async function cancelOpenTasks(
+  pool: Pool,
+  target: { taskId: string } | { instanceId: string },
+  reason: string,
+  actor: Actor = { type: "engine" }
+): Promise<TaskRow[]> {
+  const byTask = "taskId" in target;
+  return withTransaction(pool, async (client) => {
+    const { rows } = await client.query<TaskRow>(
+      `UPDATE tasks
+          SET status = 'cancelled', error = jsonb_build_object('message', $2::text, 'code', 'cancelled'),
+              lock_token = NULL, lock_expires_at = NULL, completed_at = now(), updated_at = now()
+        WHERE ${byTask ? "id" : "instance_id"} = $1 AND status IN ('pending', 'locked')
+       RETURNING *`,
+      [byTask ? target.taskId : target.instanceId, reason]
+    );
+    for (const task of rows) {
+      await appendAudit(client, {
+        tenantId: task.tenant_id,
+        instanceId: task.instance_id,
+        taskId: task.id,
+        actor,
+        event: "task.cancelled",
+        data: { reason },
+      });
+    }
+    return rows;
+  });
+}
+
+/** The step run has read the task's outcome; the outbox stops re-publishing it. */
+export async function markConsumed(pool: Pool, taskId: string): Promise<void> {
+  await pool.query("UPDATE tasks SET consumed_at = now() WHERE id = $1 AND consumed_at IS NULL", [taskId]);
+}
+
 // ── Reads ─────────────────────────────────────────────────────────────────────
 
 export async function getTask(pool: Pool, tenantId: string, taskId: string): Promise<TaskRow> {
   return loadTask(pool, tenantId, taskId);
+}
+
+export function isResolved(task: TaskRow): boolean {
+  return task.status === "completed" || task.status === "failed" || task.status === "cancelled";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

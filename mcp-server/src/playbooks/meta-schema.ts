@@ -97,6 +97,7 @@ const taskStepProps = {
   timeout: duration,
   irreversible: { type: "boolean" },
   requires_approval: id,
+  approval_decisions: { type: "array", items: nonEmpty, minItems: 1, uniqueItems: true },
 };
 
 const step = {

@@ -105,6 +105,9 @@ export interface TaskStep extends StepBase {
   irreversible?: boolean;
   /** User step that every path from the start to this step must pass through. */
   requires_approval?: string;
+  /** Decisions of the approval step that allow this step. Enforced at runtime: the approval
+   *  must be the step entered right before this one, with one of these decisions. */
+  approval_decisions?: string[];
 }
 
 export interface WaitStep extends StepBase {

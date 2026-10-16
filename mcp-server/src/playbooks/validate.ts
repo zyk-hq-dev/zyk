@@ -122,8 +122,26 @@ function checkSteps(m: PlaybookManifest): string[] {
     if (step.irreversible && !step.requires_approval) {
       problems.push(`${where} is irreversible and needs requires_approval (a user step)`);
     }
-    if (step.requires_approval && m.steps[step.requires_approval]?.kind !== "user") {
+    const approval = step.requires_approval ? m.steps[step.requires_approval] : undefined;
+    if (step.requires_approval && approval?.kind !== "user") {
       problems.push(`${where}.requires_approval: \`${step.requires_approval}\` is not a user step`);
+    }
+    if (step.requires_approval && !step.approval_decisions) {
+      problems.push(
+        `${where} needs approval_decisions (which decisions of \`${step.requires_approval}\` allow it)`
+      );
+    }
+    if (step.approval_decisions && !step.requires_approval) {
+      problems.push(`${where}.approval_decisions requires requires_approval`);
+    }
+    if (approval && isTask(approval) && approval.kind === "user" && step.approval_decisions) {
+      const props = (approval.result_schema.properties ?? {}) as Record<string, { enum?: unknown[] }>;
+      const allowed = props.decision?.enum ?? [];
+      for (const d of step.approval_decisions) {
+        if (!allowed.includes(d)) {
+          problems.push(`${where}.approval_decisions: \`${d}\` is not a decision of \`${step.requires_approval}\``);
+        }
+      }
     }
   }
   return problems;

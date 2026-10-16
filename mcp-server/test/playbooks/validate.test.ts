@@ -132,6 +132,15 @@ describe("validateManifest", () => {
       );
     });
 
+    it("requires approval decisions that the approval step can produce", () => {
+      expect(problemsAfter((m) => delete m.steps.send.approval_decisions)).toContain(
+        "steps.send needs approval_decisions (which decisions of `approve` allow it)"
+      );
+      expect(problemsAfter((m) => (m.steps.send.approval_decisions = ["yes"]))).toContain(
+        "steps.send.approval_decisions: `yes` is not a decision of `approve`"
+      );
+    });
+
     it("requires the approval step to be a user step", () => {
       expect(problemsAfter((m) => (m.steps.send.requires_approval = "work"))).toContain(
         "steps.send.requires_approval: `work` is not a user step"
