@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log).
 
 ## Stack
 

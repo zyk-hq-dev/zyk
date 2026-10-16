@@ -155,6 +155,25 @@ exactly while `locked`; `(instance_id, step_key, iteration)` is unique (replay i
 
 Delivery is at-least-once; effects are exactly-once via claim + idempotency.
 
+Details (implemented in `mcp-server/src/tasks/store.ts`):
+
+- `attempts` increments on **claim**. Pending therefore always means attempts < max.
+- A completion arriving after the lock expired but **before** the reaper ran is accepted —
+  the token still matches and nobody else has the task.
+- **Idempotent resolution:** `resolved_by_token` records the token that released the task.
+  Repeating `complete` (or `fail`) with that token returns the stored outcome, so a worker
+  that lost the response can safely retry. A different operation with that token is stale.
+- **Retryable failures** return to `pending` with backoff (30 s, 60 s, 120 s, … capped at 1 h)
+  until `max_attempts`; non-retryable or exhausted failures fail the task.
+- **Invalid results** leave the task locked to the same worker (fix and resend with the same
+  token) and are audited as `task.result_rejected`.
+- Stale-token errors explain what happened (returned to queue / claimed by another worker /
+  already resolved) and name the idempotency key.
+- A maintenance loop (every 15 s, on every replica) runs the reaper and purges
+  `untrusted_content` past `untrusted_expires_at` (`ZYK_UNTRUSTED_RETENTION_DAYS`, default 14).
+- Audit events: `task.created`, `task.locked`, `task.lock_extended`, `task.completed`,
+  `task.result_rejected`, `task.retry_scheduled`, `task.failed`, `task.lease_expired`.
+
 ## 7. MCP surface
 
 Worker: `fetch_and_lock`, `extend_lock`, `complete_task`, `fail_task`, `complete_user_task`.
@@ -272,6 +291,7 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | Default trigger for incident mails: scheduled run polls inbox; webhook documented. |
 | 2026-10-16 | "Pack" renamed to **playbook**. |
 | 2026-10-16 | zyk DB: separate `zyk` database, plain SQL migrations run on start, schema-level invariants; tests use real Postgres (`zyk_test`, recreated per run) with vitest. |
+| 2026-10-16 | Task store: attempts counted on claim; idempotent resolution via `resolved_by_token`; late completions accepted until reaped; retry backoff 30 s doubling to 1 h. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items
