@@ -2,6 +2,9 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { App } from "../app.js";
 import { authenticateKey, extractKey } from "../auth/keys.js";
+import { startInstance } from "../engine/instances.js";
+import { ZykError } from "../errors.js";
+import { formatInstance } from "../mcp/format.js";
 import { createMcpServer } from "../mcp/server.js";
 
 const MAX_BODY_BYTES = 1_000_000;
@@ -47,7 +50,7 @@ async function handleRequest(app: App, req: IncomingMessage, res: ServerResponse
   }
 
   if (path === "/mcp") {
-    const auth = key ? await authenticateKey(app.pool, key) : null;
+    const auth = key ? await authenticateKey(app.pool, key, "mcp") : null;
     if (!auth) {
       sendJson(res, 401, UNAUTHORIZED);
       return;
@@ -76,7 +79,79 @@ async function handleRequest(app: App, req: IncomingMessage, res: ServerResponse
     return;
   }
 
+  const webhook = /^\/webhooks\/([a-z][a-z0-9-]*)$/.exec(path);
+  if (webhook) {
+    await handleWebhook(app, req, res, key, webhook[1]);
+    return;
+  }
+
   sendJson(res, 404, { error: "not_found" });
+}
+
+const WEBHOOK_UNAUTHORIZED = {
+  error: "unauthorized",
+  message: "Missing or invalid zyk webhook key.",
+  hint:
+    "Send `Authorization: Bearer <webhook key>`, or use the URL /webhooks/k/<webhook key>/<playbook_id>. " +
+    "Create a webhook key with: npm run admin -- webhook-key:create <tenant_id>. MCP API keys do not work here.",
+};
+
+/**
+ * POST /webhooks/<playbook_id> starts an instance from an external event (e.g. a forwarded
+ * mail). The JSON body is the playbook input. Repeated deliveries of the same event are
+ * deduplicated by the playbook's external key.
+ */
+async function handleWebhook(
+  app: App,
+  req: IncomingMessage,
+  res: ServerResponse,
+  key: string | null,
+  playbookId: string
+): Promise<void> {
+  const auth = key ? await authenticateKey(app.pool, key, "webhook") : null;
+  if (!auth) {
+    sendJson(res, 401, WEBHOOK_UNAUTHORIZED);
+    return;
+  }
+  if (req.method !== "POST") {
+    res.writeHead(405, { Allow: "POST" }).end();
+    return;
+  }
+  if (!(req.headers["content-type"] ?? "").toLowerCase().startsWith("application/json")) {
+    sendJson(res, 415, {
+      error: "unsupported_media_type",
+      message: "Send the playbook input as JSON (Content-Type: application/json).",
+    });
+    return;
+  }
+  let input: unknown;
+  try {
+    input = JSON.parse(await readBody(req));
+  } catch (err) {
+    const tooLarge = (err as Error).message.includes("too large");
+    sendJson(res, tooLarge ? 413 : 400, {
+      error: tooLarge ? "payload_too_large" : "invalid_json",
+      message: tooLarge ? `The body exceeds ${MAX_BODY_BYTES} bytes.` : "The body is not valid JSON.",
+    });
+    return;
+  }
+  try {
+    const { instance, created } = await startInstance(app.pool, app.catalog, {
+      tenantId: auth.tenantId,
+      playbookId,
+      input,
+      actor: { type: "webhook", id: auth.keyPrefix },
+    });
+    const engine = app.engine();
+    if (created && engine) await engine.triggerInstance(instance);
+    sendJson(res, created ? 202 : 200, { ...formatInstance(instance, app.catalog), created });
+  } catch (err) {
+    if (err instanceof ZykError) {
+      sendJson(res, err.code === "unknown_playbook" ? 404 : 400, err.toJSON());
+      return;
+    }
+    throw err;
+  }
 }
 
 export function createHttpServer(app: App): Server {

@@ -57,7 +57,7 @@ export async function startInstance(
   if (!manifest) {
     const known = catalog.list().map((m) => m.id);
     throw new ZykError(
-      "invalid_argument",
+      "unknown_playbook",
       `Unknown playbook \`${p.playbookId}\`.`,
       `Use one of: ${known.join(", ") || "(none installed)"}. Call list_playbooks to see them.`
     );
@@ -202,6 +202,20 @@ export async function failInstance(
     return true;
   });
   if (ended) await cancelOpenTasks(pool, { instanceId }, `Instance failed: ${error.message}`);
+}
+
+/** The instance input's untrusted fields (per its pinned manifest), or undefined if none remain. */
+export async function untrustedInputOf(pool: Pool, instanceId: string): Promise<Record<string, unknown> | undefined> {
+  const { rows } = await pool.query<{ fields: Record<string, unknown> | null }>(
+    `SELECT (SELECT jsonb_object_agg(f, i.input -> f)
+              FROM jsonb_array_elements_text(COALESCE(pv.manifest -> 'untrusted_input', '[]')) AS f
+             WHERE i.input ? f) AS fields
+       FROM instances i
+       JOIN playbook_versions pv ON pv.playbook_id = i.playbook_id AND pv.version = i.playbook_version
+      WHERE i.id = $1`,
+    [instanceId]
+  );
+  return rows[0]?.fields ?? undefined;
 }
 
 /** Running instances that never got a Hatchet run (trigger failed after the insert). */

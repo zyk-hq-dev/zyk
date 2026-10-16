@@ -54,7 +54,14 @@ cd mcp-server && npm run build && npm run admin -- tenant:create local-dev
 ```
 
 Connect an MCP client with `Authorization: Bearer <key>`, or use
-`http://localhost:3100/mcp/k/<key>` if the client cannot send headers. For Claude Code:
+`http://localhost:3100/mcp/k/<key>` if the client cannot send headers. To start workflows from external events (e.g. a mail forwarder), create a webhook key with
+`npm run admin -- webhook-key:create <tenant_id>` and POST the playbook input:
+
+```bash
+curl -X POST http://localhost:3100/webhooks/incident-triage \n  -H "Authorization: Bearer <webhook key>" -H "Content-Type: application/json" \n  -d '{"message_id":"<m1@example.com>","from":"Ada <ada@example.com>","subject":"Checkout down","body":"…","received_at":"2026-10-16T09:00:00Z"}'
+```
+
+For Claude Code:
 
 ```bash
 claude mcp add --transport http zyk http://localhost:3100/mcp --header "Authorization: Bearer <key>"

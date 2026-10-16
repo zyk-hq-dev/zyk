@@ -127,6 +127,22 @@ describe("incident-triage on Hatchet", () => {
     // Exactly one task per step entry, despite replays and duplicate events.
     const created = details.history.filter((h) => h.event === "task.created").map((h) => h.data.step_key);
     expect(created).toEqual(handled);
+
+    // The mail body reached the triage task as untrusted content, but no Hatchet run input.
+    const triageTask = details.tasks.find((t) => t.step_key === "triage")!;
+    expect(triageTask.untrusted_content).toMatchObject({ body: "Nobody can pay since 9:00." });
+    const { getHatchetClient } = await import("../src/hatchet/client.js");
+    const hatchet = getHatchetClient();
+    const runs = await hatchet.runs.list({
+      since: new Date(Date.now() - 3600_000),
+      additionalMetadata: { zyk_instance: instance.id },
+      limit: 100,
+    });
+    expect(runs.rows?.length).toBeGreaterThanOrEqual(handled.length);
+    for (const row of runs.rows ?? []) {
+      const detail = await hatchet.runs.get(row.metadata.id);
+      expect(JSON.stringify(detail.run.input ?? {})).not.toContain("Nobody can pay");
+    }
   });
 
   it("survives an engine restart mid-run without duplicating tasks", async () => {

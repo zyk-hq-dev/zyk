@@ -481,8 +481,8 @@ describe("reapExpiredLocks", () => {
 describe("purgeExpiredUntrustedContent", () => {
   it("drops external content after retention", async () => {
     const { task } = await createTask(pool, newTask({ untrustedContent: { mail_body: "hello" } }));
-    expect(await purgeExpiredUntrustedContent(pool)).toBe(0);
-    expect(await purgeExpiredUntrustedContent(pool, { now: new Date(Date.now() + 15 * 86_400_000) })).toBe(1);
+    expect((await purgeExpiredUntrustedContent(pool)).tasks).toBe(0);
+    expect((await purgeExpiredUntrustedContent(pool, { now: new Date(Date.now() + 15 * 86_400_000) })).tasks).toBe(1);
     const after = await getTask(pool, tenant, task.id);
     expect(after.untrusted_content).toBeNull();
     expect(after.untrusted_expires_at).toBeNull();

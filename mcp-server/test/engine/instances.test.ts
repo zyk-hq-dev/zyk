@@ -10,10 +10,11 @@ import {
   recordStep,
   startInstance,
   untriggeredInstances,
+  untrustedInputOf,
 } from "../../src/engine/instances.js";
 import { republishPending } from "../../src/engine/outbox.js";
 import { loadPlaybooks, PlaybookCatalog, registerPlaybooks } from "../../src/playbooks/loader.js";
-import { completeTask, createTask, fetchAndLock, getTask, markConsumed } from "../../src/tasks/store.js";
+import { completeTask, createTask, fetchAndLock, getTask, markConsumed, purgeExpiredUntrustedContent } from "../../src/tasks/store.js";
 import { insertTenant, resetData, testPool } from "../helpers/db.js";
 
 const pool = testPool();
@@ -187,5 +188,23 @@ describe("outbox", () => {
     await finishInstance(pool, instance, "end_resolved", "resolved");
     const publish = async () => {};
     expect(await republishPending(pool, publish, { unpublishedGraceSeconds: 0 })).toEqual([]);
+  });
+});
+
+describe("untrusted input", () => {
+  it("returns only the manifest's untrusted fields", async () => {
+    const { instance } = await start();
+    expect(await untrustedInputOf(pool, instance.id)).toEqual({ subject: "Checkout down", body: "Nobody can pay" });
+  });
+
+  it("is purged from instance inputs after the retention period", async () => {
+    const { instance } = await start();
+    expect((await purgeExpiredUntrustedContent(pool)).instances).toBe(0);
+    const later = new Date(Date.now() + 15 * 86_400_000);
+    expect((await purgeExpiredUntrustedContent(pool, { now: later })).instances).toBe(1);
+    const row = await loadInstance(pool, instance.id);
+    expect(row.input).toEqual({ message_id: "<msg-1@example.com>", from: "Ada <ada@example.com>", received_at: "2026-10-16T09:00:00Z" });
+    expect(await untrustedInputOf(pool, instance.id)).toBeUndefined();
+    expect((await purgeExpiredUntrustedContent(pool, { now: later })).instances).toBe(0);
   });
 });

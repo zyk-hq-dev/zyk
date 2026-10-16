@@ -20,6 +20,9 @@ export interface TaskSpec {
   instructions: string;
   input: Record<string, unknown>;
   untrustedContent?: unknown;
+  /** Attach the instance input's untrusted fields when the task is created. They are read from
+   *  the zyk DB by the step run, so mail bodies never pass through Hatchet run inputs. */
+  untrustedFromInput?: boolean;
   resultSchema: Record<string, unknown>;
   allowedTools: string[];
   idempotencyKey?: string;
@@ -40,7 +43,9 @@ export interface UserDecision {
 export interface TaskOptions {
   /** Structured data for the task. Never put external text here — use `untrusted`. */
   input?: Record<string, unknown>;
-  /** External text (mail bodies, comments). Delivered as untrusted_content. */
+  /** Include the instance input's untrusted fields (manifest `untrusted_input`) as untrusted_content. */
+  untrustedInput?: boolean;
+  /** Other external text (e.g. from a previous step's result). Delivered as untrusted_content. */
   untrusted?: unknown;
 }
 
@@ -243,6 +248,7 @@ export abstract class TrackedRun implements PlaybookRun {
       instructions: renderInstructions(step.instructions, this.config),
       input,
       untrustedContent: opts.untrusted,
+      ...(opts.untrustedInput ? { untrustedFromInput: true } : {}),
       resultSchema: step.result_schema,
       allowedTools: step.allowed_tools ?? [],
       idempotencyKey,

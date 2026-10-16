@@ -37,14 +37,22 @@ describe("api keys", () => {
 
   it("authenticates active keys and rejects unknown, malformed, and revoked ones", async () => {
     const { tenantId, key } = await createTenant(pool, "Acme");
-    expect(await authenticateKey(pool, key)).toMatchObject({ tenantId, keyPrefix: key.slice(0, 12) });
-    expect(await authenticateKey(pool, generateKey())).toBeNull();
-    expect(await authenticateKey(pool, "not-a-key")).toBeNull();
+    expect(await authenticateKey(pool, key, "mcp")).toMatchObject({ tenantId, keyPrefix: key.slice(0, 12), scope: "mcp" });
+    expect(await authenticateKey(pool, generateKey(), "mcp")).toBeNull();
+    expect(await authenticateKey(pool, "not-a-key", "mcp")).toBeNull();
 
     const second = await createApiKey(pool, tenantId, "scheduled run");
     expect(await revokeApiKey(pool, key.slice(0, 12))).toBe(1);
-    expect(await authenticateKey(pool, key)).toBeNull();
-    expect(await authenticateKey(pool, second)).not.toBeNull();
+    expect(await authenticateKey(pool, key, "mcp")).toBeNull();
+    expect(await authenticateKey(pool, second, "mcp")).not.toBeNull();
+  });
+
+  it("only accepts a key for its own scope", async () => {
+    const { tenantId, key } = await createTenant(pool, "Acme");
+    const hook = await createApiKey(pool, tenantId, "mail forwarder", "webhook");
+    expect(await authenticateKey(pool, hook, "webhook")).toMatchObject({ tenantId, scope: "webhook" });
+    expect(await authenticateKey(pool, hook, "mcp")).toBeNull();
+    expect(await authenticateKey(pool, key, "webhook")).toBeNull();
   });
 });
 

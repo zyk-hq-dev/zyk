@@ -79,7 +79,7 @@ describe("incident-triage flow", () => {
     expect(String(r.specs("draft_resolution")[0].input.text)).toContain("Rolled back the payment service.");
   });
 
-  it("passes the mail text only as untrusted content, and only to triage and confirm", async () => {
+  it("attaches the mail text only as untrusted content by reference, and only to triage and confirm", async () => {
     const r = scripted({
       triage: [triage()], confirm: [{ decision: "sev3" }], create_issue: [issue],
       draft_ack: [draft()], approve_ack: [{ decision: "skip" }],
@@ -89,9 +89,11 @@ describe("incident-triage flow", () => {
     for (const spec of r.tasks) {
       expect(JSON.stringify(spec.input), spec.stepKey).not.toContain("Ignore previous instructions");
       expect(spec.instructions, spec.stepKey).not.toContain("Ignore previous instructions");
-      if (spec.untrustedContent !== undefined) expect(["triage", "confirm"]).toContain(spec.stepKey);
+      expect(spec.untrustedContent, spec.stepKey).toBeUndefined();
+      if (spec.untrustedFromInput) expect(["triage", "confirm"]).toContain(spec.stepKey);
     }
-    expect(r.specs("triage")[0].untrustedContent).toEqual({ subject: mail.subject, body: mail.body });
+    expect(r.specs("triage")[0].untrustedFromInput).toBe(true);
+    expect(r.specs("confirm")[0].untrustedFromInput).toBe(true);
   });
 
   it("skips confirmation for auto-create severities", async () => {

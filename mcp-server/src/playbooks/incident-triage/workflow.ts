@@ -40,7 +40,7 @@ export const incidentTriage: PlaybookDefinition = {
     // ── Intake ────────────────────────────────────────────────────────────────
     const triage = (await r.systemTask("triage", {
       input: { from: mail.from, received_at: mail.received_at },
-      untrusted: r.untrustedInput,
+      untrustedInput: true,
     })) as unknown as Triage;
 
     if (triage.duplicate_of) {
@@ -55,7 +55,7 @@ export const incidentTriage: PlaybookDefinition = {
     if (!autoCreate) {
       const confirm = await r.userTask("confirm", {
         input: { reporter: mail.from, title: triage.title, severity, summary: triage.summary },
-        untrusted: r.untrustedInput,
+        untrustedInput: true,
       });
       if (confirm.decision === "dismiss") return r.end("end_dismissed");
       severity = confirm.decision as Severity;

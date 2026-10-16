@@ -9,7 +9,8 @@ export type ZykErrorCode =
   | "already_resolved"
   | "wrong_task_kind"
   | "result_invalid"
-  | "invalid_argument";
+  | "invalid_argument"
+  | "unknown_playbook";
 
 export class ZykError extends Error {
   constructor(

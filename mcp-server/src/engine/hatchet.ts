@@ -38,6 +38,7 @@ import {
   loadInstance,
   recordStep,
   untriggeredInstances,
+  untrustedInputOf,
   type InstanceRow,
 } from "./instances.js";
 import { publishResolution, republishPending } from "./outbox.js";
@@ -97,6 +98,11 @@ function firedKeys(waitResult: Record<string, unknown>): string[] {
 
 async function runStep(pool: Pool, input: StepInput, ctx: AnyDurableContext): Promise<StepOutput> {
   const { spec } = input;
+  let untrusted = spec.untrustedContent;
+  if (spec.untrustedFromInput) {
+    const fromInput = await untrustedInputOf(pool, input.instance_id);
+    if (fromInput) untrusted = { ...(untrusted && typeof untrusted === "object" ? untrusted : {}), ...fromInput };
+  }
   const { task } = await createTask(pool, {
     tenantId: input.tenant_id,
     instanceId: input.instance_id,
@@ -106,7 +112,7 @@ async function runStep(pool: Pool, input: StepInput, ctx: AnyDurableContext): Pr
     topic: spec.topic,
     instructions: spec.instructions,
     input: spec.input,
-    untrustedContent: spec.untrustedContent,
+    untrustedContent: untrusted,
     resultSchema: spec.resultSchema,
     allowedTools: spec.allowedTools,
     idempotencyKey: spec.idempotencyKey,

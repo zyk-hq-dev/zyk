@@ -523,14 +523,31 @@ export async function reapExpiredLocks(pool: Pool, opts: { now?: Date } = {}): P
   });
 }
 
-/** Drops external content past its retention date. Returns the number of tasks purged. */
-export async function purgeExpiredUntrustedContent(pool: Pool, opts: { now?: Date } = {}): Promise<number> {
-  const { rowCount } = await pool.query(
+/**
+ * Drops external content past its retention date: from tasks (`untrusted_expires_at`) and from
+ * instance inputs (the manifest's `untrusted_input` fields, once the instance is older than the
+ * retention period). Returns how many tasks and instances were purged.
+ */
+export async function purgeExpiredUntrustedContent(
+  pool: Pool,
+  opts: { now?: Date } = {}
+): Promise<{ tasks: number; instances: number }> {
+  const tasks = await pool.query(
     `UPDATE tasks SET untrusted_content = NULL, untrusted_expires_at = NULL, updated_at = now()
       WHERE untrusted_content IS NOT NULL AND untrusted_expires_at < COALESCE($1, now())`,
     [opts.now ?? null]
   );
-  return rowCount ?? 0;
+  const instances = await pool.query(
+    `UPDATE instances i
+        SET input = i.input - ARRAY(SELECT jsonb_array_elements_text(pv.manifest -> 'untrusted_input')),
+            updated_at = now()
+       FROM playbook_versions pv
+      WHERE pv.playbook_id = i.playbook_id AND pv.version = i.playbook_version
+        AND i.created_at < COALESCE($1, now()) - make_interval(days => $2)
+        AND i.input ?| ARRAY(SELECT jsonb_array_elements_text(COALESCE(pv.manifest -> 'untrusted_input', '[]')))`,
+    [opts.now ?? null, untrustedRetentionDays()]
+  );
+  return { tasks: tasks.rowCount ?? 0, instances: instances.rowCount ?? 0 };
 }
 
 /** Runs the reaper and retention purge periodically. Returns a stop function. */

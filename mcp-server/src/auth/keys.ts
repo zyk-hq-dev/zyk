@@ -8,9 +8,12 @@ import type { IncomingMessage } from "http";
 import { appendAudit } from "../audit/log.js";
 import { withTransaction, type Pool } from "../db/pool.js";
 
+export type KeyScope = "mcp" | "webhook";
+
 export interface AuthContext {
   tenantId: string;
   keyId: string;
+  scope: KeyScope;
   /** First characters of the key, safe to show and log. */
   keyPrefix: string;
 }
@@ -48,18 +51,23 @@ export async function createTenant(pool: Pool, name: string): Promise<{ tenantId
   });
 }
 
-export async function createApiKey(pool: Pool, tenantId: string, label?: string): Promise<string> {
+export async function createApiKey(
+  pool: Pool,
+  tenantId: string,
+  label?: string,
+  scope: KeyScope = "mcp"
+): Promise<string> {
   const key = generateKey();
   await withTransaction(pool, async (client) => {
     await client.query(
-      "INSERT INTO api_keys (tenant_id, key_hash, key_prefix, label) VALUES ($1, $2, $3, $4)",
-      [tenantId, hashKey(key), keyPrefix(key), label ?? null]
+      "INSERT INTO api_keys (tenant_id, key_hash, key_prefix, label, scope) VALUES ($1, $2, $3, $4, $5)",
+      [tenantId, hashKey(key), keyPrefix(key), label ?? null, scope]
     );
     await appendAudit(client, {
       tenantId,
       actor: { type: "admin" },
       event: "api_key.created",
-      data: { key_prefix: keyPrefix(key), label: label ?? null },
+      data: { key_prefix: keyPrefix(key), label: label ?? null, scope },
     });
   });
   return key;
@@ -84,13 +92,15 @@ export async function revokeApiKey(pool: Pool, prefix: string): Promise<number> 
   });
 }
 
-export async function authenticateKey(pool: Pool, key: string): Promise<AuthContext | null> {
+/** Returns the key's context if it is active and has the required scope. */
+export async function authenticateKey(pool: Pool, key: string, scope: KeyScope): Promise<AuthContext | null> {
   if (!KEY_RE.test(key)) return null;
-  const { rows } = await pool.query<{ id: string; tenant_id: string; key_prefix: string }>(
-    "SELECT id, tenant_id, key_prefix FROM api_keys WHERE key_hash = $1 AND revoked_at IS NULL",
+  const { rows } = await pool.query<{ id: string; tenant_id: string; key_prefix: string; scope: KeyScope }>(
+    "SELECT id, tenant_id, key_prefix, scope FROM api_keys WHERE key_hash = $1 AND revoked_at IS NULL",
     [hashKey(key)]
   );
-  return rows.length ? { tenantId: rows[0].tenant_id, keyId: rows[0].id, keyPrefix: rows[0].key_prefix } : null;
+  if (rows.length === 0 || rows[0].scope !== scope) return null;
+  return { tenantId: rows[0].tenant_id, keyId: rows[0].id, keyPrefix: rows[0].key_prefix, scope: rows[0].scope };
 }
 
 /**

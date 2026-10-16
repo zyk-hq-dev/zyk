@@ -232,7 +232,13 @@ They return to the queue; only the step timeout ends them.
 Milestone 2: `propose_customization`, `preview_customization`, `apply_customization`,
 `list_versions`, `rollback`, `show_workflow`.
 Prompt: `/zyk-work`.
-HTTP: `POST /webhooks/:tenant/:playbook_id` (per-tenant secret header, dedupe on external key).
+HTTP webhook: `POST /webhooks/<playbook_id>` with a JSON body that is the playbook input.
+The tenant comes from the key, so it is not in the URL. Webhook keys have scope `webhook`: they
+can only start workflows (and MCP keys cannot call webhooks). The key goes in
+`Authorization: Bearer <key>` or the path (`/webhooks/k/<key>/<playbook_id>`) for senders that
+cannot set headers. Responses: 202 created, 200 duplicate delivery (same external key, nothing
+started), 400 invalid input (with the problems), 401, 404 unknown playbook, 413, 415. If the
+engine is down, the instance is created and triggered by recovery once it runs.
 
 Guidance authority (strongest first): user's project instructions → server instructions +
 tool descriptions → `/zyk-work` prompt → per-task instructions → actionable errors.
@@ -255,8 +261,12 @@ External text only ever appears in `untrusted_content`.
   complete user tasks — they summarize them for the user. Each decision records `decided_via`
   (`conversation` | `elicitation` | `ui`). When the client supports MCP elicitation, approvals
   use it. Milestone 2: approvals via MCP App buttons.
-- **Data minimization:** store process data and results, not full mail bodies.
-  `untrusted_content` is purged after 14 days (configurable).
+- **Data minimization:** store process data and results, not full mail bodies. External text
+  enters only through `untrusted_input` fields and is purged after the retention period
+  (`ZYK_UNTRUSTED_RETENTION_DAYS`, default 14) from both tasks and instance inputs.
+  **Mail text never passes through Hatchet:** playbook code requests it with
+  `untrustedInput: true`; the `zyk-step` run reads it from the zyk DB when it creates the task,
+  so Hatchet run inputs only carry the flag (verified in the e2e test).
 - The Hatchet UI and admin login are not exposed publicly on the hosted deployment.
 
 ## 9. Playbooks
@@ -388,6 +398,8 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | Step/violation failures fail the Hatchet run with NonRetryableError so the Hatchet UI matches zyk. |
 | 2026-10-16 | Auth: per-tenant keys via bearer header or URL path (Claude request headers are a limited beta). |
 | 2026-10-16 | Added `release_task` and `kinds` filter; user tasks are never failed by lease expiry; `fail_task` is system-only. |
+| 2026-10-16 | Webhook: `/webhooks/<playbook_id>`, tenant from a webhook-scoped key; keys are scoped (`mcp` / `webhook`). |
+| 2026-10-16 | Untrusted instance input is passed to steps by reference (never in Hatchet inputs) and purged from instances after retention. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items
