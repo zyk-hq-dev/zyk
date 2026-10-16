@@ -206,10 +206,40 @@ External text only ever appears in `untrusted_content`.
 
 ### 9.1 Format
 
-Manifest in YAML (comments, multi-line instructions), validated against a JSON Schema
-meta-schema. Extension point types: `duration`, `integer`, `boolean`, `enum`, `string_list`,
-`template`, `text`, `branch_toggle`. Branch conditions use a small built-in language
-(`eq`, `in`, `not`, `and`, `or`, `exists`) — no `eval`.
+Manifests live at `mcp-server/playbooks/<id>/<version>.yaml`; several versions coexist so
+pinned instances keep resolving theirs. On startup every manifest is validated and registered
+in `playbook_versions` with a content hash. A **released** version whose content changed stops
+the server (bump the version); **prerelease** versions (`1.0.0-dev`) may change in place.
+
+A manifest declares:
+
+- `input_schema`, `external_key` (dedupe field), `untrusted_input` (fields passed to tasks only
+  as untrusted content).
+- `extension_points` — typed, constrained, with defaults: `duration` (compact: `30m`, `4h`,
+  `1d12h`), `integer`, `boolean`, `enum`, `string_list` (optionally restricted), `text`,
+  `template` (only declared `{{variables}}`).
+- `steps` — `system` / `user` task templates (topic, instructions, result schema, allowed
+  tools, idempotency key pattern, timeout, max attempts), `wait` steps (which duration
+  extension points apply), and `end` steps (outcome); edges with labels for diagrams.
+
+Validation (structure via meta-schema, then semantic checks; all problems reported at once):
+
+- Edges point to existing steps; every step is reachable from `start` and can reach an end.
+- **Instructions may only reference `{{config.<extension point>}}`** — never runtime data, so
+  external text cannot end up in instructions. Idempotency keys may use `{{external_key}}`,
+  `{{instance_id}}`, `{{iteration}}`.
+- User steps must declare `decision` as a required enum.
+- **Irreversible steps need an idempotency key and `requires_approval`, and every path from
+  `start` must pass through that user step** (checked on the graph). This is a static guarantee
+  that the approval step is visited; the workflow code enforces that its decision was positive.
+- Extension-point defaults satisfy their own constraints; templates use only declared variables.
+
+Idempotency for effects in external systems uses **markers**: the workflow passes a marker
+string (derived from the idempotency key) in the task input; the assistant searches for it
+before creating an issue or comment and embeds it (as an HTML comment) when creating.
+
+There is no condition language: control flow is TypeScript in the playbook workflow, which
+reads typed config values. Toggles are `boolean` / `enum` / `string_list` extension points.
 
 ### 9.2 Customization overlay (milestone 2, designed now)
 
@@ -247,7 +277,7 @@ A lead follow-up playbook follows later as the second playbook.
 - Reuse references for milestone 2 (diagram MCP App): the v1 dashboard's Mermaid rendering,
   pan/zoom (`initDiagramZoom`), and theme live in `v1.0.0:mcp-server/src/server/webhook.ts`
   (inline script, ~lines 576–725). The structured Mermaid generator is kept in
-  `mcp-server/src/utils/diagram.ts` and will move to `playbooks/diagram.ts`.
+  `mcp-server/src/utils/diagram.ts` and will move to `src/playbooks/diagram.ts`.
 
 ```
 mcp-server/src/
@@ -256,9 +286,10 @@ mcp-server/src/
   tasks/                store (claim/extend/complete/fail), reaper, outbox
   audit/                log
   engine/               hatchet client, zyk-step workflow, step helper
-  playbooks/            meta-schema, loader, resolve, conditions, diagram
+  playbooks/            types, meta-schema, validate, config, loader (+ diagram in M2)
+  playbooks/<id>/       workflow code per playbook (step 5)
   db/                   pool, migrate, migrations/*.sql
-mcp-server/playbooks/incident-triage/   manifest.yaml, workflow.ts, samples.json
+mcp-server/playbooks/incident-triage/   1.0.0-dev.yaml (manifest versions)
 mcp-server/test/        unit/, integration/, sim-worker.ts
 docs/                   v2-architecture.md, assistant/
 ```
@@ -269,7 +300,7 @@ docs/                   v2-architecture.md, assistant/
 1. Strip v1, rewrite CLAUDE.md, fix Compose.
 2. DB pool, migrations, schema.
 3. Task store + reaper + audit, with race/lease tests on real Postgres.
-4. Playbook meta-schema, loader, conditions, incident-triage manifest + validation tests.
+4. Playbook meta-schema, loader, incident-triage manifest + validation tests.
 5. Hatchet integration: `zyk-step` child workflow, outbox, incident-triage workflow code.
 6. MCP tools, server instructions, `/zyk-work`, auth.
 7. Webhook trigger.
@@ -292,6 +323,9 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | "Pack" renamed to **playbook**. |
 | 2026-10-16 | zyk DB: separate `zyk` database, plain SQL migrations run on start, schema-level invariants; tests use real Postgres (`zyk_test`, recreated per run) with vitest. |
 | 2026-10-16 | Task store: attempts counted on claim; idempotent resolution via `resolved_by_token`; late completions accepted until reaped; retry backoff 30 s doubling to 1 h. |
+| 2026-10-16 | No condition language: branches live in playbook code; toggles are typed extension points. |
+| 2026-10-16 | Manifest rules: instructions reference config only; irreversible steps need an approval step on every path (static graph check); released versions immutable, prereleases mutable. |
+| 2026-10-16 | Incident triage: only outgoing mail is irreversible (approval-gated); GitHub issues and comments in the user's own repo are not gated. Idempotency via markers embedded in created issues/comments. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items

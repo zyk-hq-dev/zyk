@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest).
 
 ## Stack
 
@@ -53,6 +53,9 @@ Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + 
   complete user tasks.
 - **Errors returned to the assistant must be actionable**: say exactly what is wrong and how
   to fix it.
+- Playbook manifests: `mcp-server/playbooks/<id>/<version>.yaml`. Released versions are
+  immutable (bump the version); prerelease versions (`-dev`) may change. Instructions may only
+  reference `{{config.*}}`.
 - `tenant_id` on every tenant-owned table (`playbook_versions` is a global catalog).
 - Schema changes are new numbered SQL files in `mcp-server/migrations/`; never edit a migration
   that has been released.

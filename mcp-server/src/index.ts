@@ -9,6 +9,7 @@ import { ensureHatchetToken } from "./hatchet/bootstrap.js";
 import { databaseUrl, ensureDatabase, getPool } from "./db/pool.js";
 import { migrate } from "./db/migrate.js";
 import { startMaintenance } from "./tasks/store.js";
+import { loadPlaybooks, registerPlaybooks } from "./playbooks/loader.js";
 
 // ── MCP server factory ────────────────────────────────────────────────────────
 // Stateless: each POST gets its own server + transport (SDK allows one connect per server).
@@ -93,6 +94,11 @@ async function main() {
   await ensureDatabase(databaseUrl());
   const applied = await migrate(getPool());
   if (applied.length) console.error(`[db] applied migrations: ${applied.join(", ")}`);
+
+  // Invalid manifests or edited released versions stop the server here.
+  const playbooks = loadPlaybooks();
+  await registerPlaybooks(getPool(), playbooks);
+  console.error(`[playbooks] ${playbooks.map((p) => `${p.manifest.id}@${p.manifest.version}`).join(", ") || "none"}`);
 
   // Lock reaper + untrusted-content retention. Safe on several replicas.
   startMaintenance(getPool());

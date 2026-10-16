@@ -31,21 +31,27 @@ export function assertValidSchema(schema: object): void {
 export function validateAgainstSchema(schema: object, value: unknown): string[] {
   const validate = compile(schema);
   if (validate(value)) return [];
-  return (validate.errors ?? []).map(describeError);
+  return describeAjvErrors(validate.errors ?? []);
 }
 
-/** "/labels/0/name" → "labels[0].name"; root → "result" */
-function fieldPath(instancePath: string, extra?: string): string {
+/** Readable problems for ajv errors; paths are shown relative to `root`. */
+export function describeAjvErrors(errors: ErrorObject[], root = "result"): string[] {
+  return errors.map((e) => describeError(e, root));
+}
+
+/** "/labels/0/name" → "labels[0].name"; empty path → root */
+function fieldPathFn(instancePath: string, extra?: string, root = "result"): string {
   const parts = instancePath.split("/").filter(Boolean);
   if (extra) parts.push(extra);
-  if (parts.length === 0) return "result";
+  if (parts.length === 0) return root;
   return parts.reduce(
     (acc, p, i) => (/^\d+$/.test(p) ? `${acc}[${p}]` : i === 0 ? p : `${acc}.${p}`),
     ""
   );
 }
 
-function describeError(e: ErrorObject): string {
+function describeError(e: ErrorObject, root: string): string {
+  const fieldPath = (path: string, extra?: string) => fieldPathFn(path, extra, root);
   const p = e.params as Record<string, unknown>;
   switch (e.keyword) {
     case "required":
