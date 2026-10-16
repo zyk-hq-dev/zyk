@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v2
+
+zyk v2 turns zyk into a durable process layer for AI assistants: zyk owns state, timers, and
+approvals on Hatchet; the user's assistant pulls and executes tasks over MCP. See
+`docs/v2-architecture.md`. v1 is preserved at tag `v1.0.0`.
+
+### Removed
+
+- Workflow code generation and execution: `create_workflow`, `update_workflow`, `run_workflow`,
+  `get_status`, `list_workflows`, `list_runs`, `delete_workflow`, examples, templates,
+  `review_workflow`, per-workflow worker processes, and the code runner
+- Web dashboard, Slack interactions, `/interact/*` endpoints
+- stdio transport, `--proxy` mode, `setup.js`, and the bootstrap scripts
+- `examples/`, `PROMPTS.md`, `ARCHITECTURE.md`
+- `esbuild` dependency (`tsx` is now dev-only)
+
+### Changed
+
+- Health check moved to `GET /healthz`
+- Hatchet token cache moved to `ZYK_DATA_DIR` (default `./data`)
+
 ## [0.1.0-beta] - 2026-02-25
 
 ### Added

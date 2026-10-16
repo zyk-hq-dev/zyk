@@ -1,22 +1,14 @@
 {
   "name": "zyk-mcp",
-  "version": "0.1.1",
-  "description": "Zyk MCP server — conversational workflow automation via Hatchet",
+  "version": "2.0.0-dev",
+  "description": "zyk — durable process layer for AI assistants (MCP task API on Hatchet)",
   "main": "dist/index.js",
-  "bin": {
-    "zyk-mcp": "./dist/index.js"
-  },
   "files": [
-    "dist",
-    "setup.js"
+    "dist"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "setup": "node setup.js",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
@@ -24,15 +16,15 @@
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "^1.17.2",
     "@modelcontextprotocol/sdk": "^1.26.0",
-    "esbuild": "^0.28.1",
-    "tsx": "^4.19.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.7.0"
   },
   "engines": {
     "node": ">=20"
-  }
+  },
+  "private": true
 }

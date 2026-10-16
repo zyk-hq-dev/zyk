@@ -14,9 +14,6 @@ RUN npm run build
 # Prune dev dependencies after build
 RUN npm prune --omit=dev
 
-# Create workflows directory
-RUN mkdir -p /app/workflows
-
 # Default to insecure gRPC — correct for Railway internal networking.
 # Override by setting HATCHET_CLIENT_TLS_STRATEGY in the Railway dashboard.
 ENV HATCHET_CLIENT_TLS_STRATEGY=none

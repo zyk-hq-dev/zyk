@@ -24,61 +24,23 @@
 #   3. zyk-mcp           <- This service (source: mcp-server/ subdirectory)
 #      Environment variables: see [variables] section below
 #
-# ── Persistent volume (REQUIRED for production) ───────────────────────────────
+# ── Persistent volume (optional) ──────────────────────────────────────────────
 #
-#   In the Railway dashboard for the zyk-mcp service, add a Volume:
-#     Mount path: /app/workflows
-#
-#   This persists:
-#     - workflow .ts source files and compiled .js bundles
-#     - registry.json (the workflow registry)
-#     - .token (auto-generated Hatchet token cache)
-#
-#   Without a volume, all workflows are lost on every container restart.
+#   zyk keeps no workflow files. A volume at ZYK_DATA_DIR only caches the
+#   auto-generated Hatchet token; without it a new token is generated on boot.
 #
 # ── Token generation — automatic on first boot ────────────────────────────────
 #
-#   If HATCHET_CLIENT_TOKEN is NOT set, Zyk auto-generates one on startup:
-#     1. Polls Hatchet until healthy
-#     2. Logs in as admin@example.com / Admin123!!
-#     3. Creates a token via the Hatchet REST API
-#     4. Caches it to /app/workflows/.token (survives restarts via the volume)
+#   If HATCHET_CLIENT_TOKEN is NOT set, zyk logs in to Hatchet with the default
+#   admin account, creates a token via the REST API, and caches it to
+#   ZYK_DATA_DIR/.token. Set HATCHET_REST_URL for this to work.
 #
-#   For this to work, set HATCHET_REST_URL (see variables section below).
+#   Do not expose the Hatchet UI publicly on a hosted deployment.
 #
-#   To use a manually generated token instead:
-#     Option A — Hatchet UI: https://<hatchet-engine>.up.railway.app
-#       Settings → API Tokens → Create token → set as HATCHET_CLIENT_TOKEN
-#     Option B — script (run locally):
-#       HATCHET_BASE_URL=https://<hatchet-engine>.up.railway.app \
-#         node scripts/generate-token.js
-#       Then set the printed token as HATCHET_CLIENT_TOKEN in Railway.
+# ── Connecting an assistant ───────────────────────────────────────────────────
 #
-# ── Connecting Claude ─────────────────────────────────────────────────────────
-#
-#   Claude Desktop — add to claude_desktop_config.json:
-#     {
-#       "mcpServers": {
-#         "zyk": {
-#           "command": "npx",
-#           "args": ["-y", "zyk-mcp", "--proxy", "https://<zyk-mcp>.up.railway.app/mcp"]
-#         }
-#       }
-#     }
-#   npx downloads a tiny local bridge on first use. Node.js must be installed.
-#   When Claude Desktop ships native HTTP MCP support, switch to:
-#     { "url": "https://<zyk-mcp>.up.railway.app/mcp" }
-#
-#   Claude Code (.mcp.json):
-#     {
-#       "mcpServers": {
-#         "zyk": {
-#           "type": "http",
-#           "url": "https://<zyk-mcp>.up.railway.app/mcp",
-#           "headers": { "Authorization": "Bearer <your-ZYK_API_KEY>" }
-#         }
-#       }
-#     }
+#   Remote MCP endpoint: https://<zyk-mcp>.up.railway.app/mcp
+#   Setup guides: docs/assistant/ (milestone 1, step 9)
 #
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -87,31 +49,20 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# /api/workflows returns 200 once the server is up
-healthcheckPath = "/api/workflows"
+healthcheckPath = "/healthz"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
-# ── Required environment variables ───────────────────────────────────────────
+# ── Environment variables ─────────────────────────────────────────────────────
 # Set these in the Railway dashboard for the zyk-mcp service.
 # Do NOT commit real values here.
 #
-# HATCHET_CLIENT_TOKEN       = <token — OR omit to auto-generate on first boot>
-# HATCHET_HOST_PORT          = hatchet-engine.railway.internal:7077
-# HATCHET_CLIENT_HOST_PORT   = hatchet-engine.railway.internal:7077
-# HATCHET_REST_URL           = http://hatchet-engine.railway.internal:8080
-#                              (used by auto-bootstrap when HATCHET_CLIENT_TOKEN is not set)
+# HATCHET_CLIENT_TOKEN        = <token — OR omit to auto-generate on first boot>
+# HATCHET_HOST_PORT           = hatchet-engine.railway.internal:7077
+# HATCHET_CLIENT_HOST_PORT    = hatchet-engine.railway.internal:7077
+# HATCHET_REST_URL            = http://hatchet-engine.railway.internal:8080
 # HATCHET_CLIENT_TLS_STRATEGY = none  (set in Dockerfile; override here if needed)
-#
-# ZYK_API_KEY                = <random secret — generate with: openssl rand -hex 32>
-#                              Protects the MCP endpoint from unauthorized access.
-#                              Set this in Railway, then add the same value to your
-#                              Claude config as: "Authorization": "Bearer <key>"
-#                              If not set, the server runs unauthenticated (local dev only).
-#
-# Optional — workflow secrets (passed through to generated workflow subprocesses):
-# SLACK_BOT_TOKEN            = xoxb-...
-# SLACK_SIGNING_SECRET       = <from Slack app settings>
-# STRIPE_SECRET_KEY          = sk_live_...
-# GITHUB_TOKEN               = ghp_...
+# ZYK_DATA_DIR                = /data (only if a volume is mounted there)
+# ZYK_API_KEY                 = <random secret — openssl rand -hex 32>
+#                               Temporary single key; replaced by per-tenant keys.

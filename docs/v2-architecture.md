@@ -218,6 +218,10 @@ A lead follow-up playbook follows later as the second playbook.
 
 - `v1.0.0` tag and `v1` branch preserve v1 (code-generating MCP server).
 - v2 is built on the `v2` branch. v1 code generation and user-code workers are removed.
+- Reuse references for milestone 2 (diagram MCP App): the v1 dashboard's Mermaid rendering,
+  pan/zoom (`initDiagramZoom`), and theme live in `v1.0.0:mcp-server/src/server/webhook.ts`
+  (inline script, ~lines 576–725). The structured Mermaid generator is kept in
+  `mcp-server/src/utils/diagram.ts` and will move to `playbooks/diagram.ts`.
 
 ```
 mcp-server/src/

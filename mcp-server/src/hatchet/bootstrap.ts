@@ -11,10 +11,11 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { WORKFLOWS_DIR } from "./worker.js";
 import { join } from "path";
 
-const TOKEN_CACHE_PATH = join(WORKFLOWS_DIR, ".token");
+// Directory for local runtime state (token cache). Put it on a volume to persist across restarts.
+const DATA_DIR = process.env.ZYK_DATA_DIR ?? join(process.cwd(), "data");
+const TOKEN_CACHE_PATH = join(DATA_DIR, ".token");
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────────
 
@@ -154,13 +155,13 @@ async function generateToken(baseUrl: string): Promise<string> {
  *
  * Order of precedence:
  *   1. HATCHET_CLIENT_TOKEN env var (already set — no-op)
- *   2. Token cached on disk at <WORKFLOWS_DIR>/.token (from a previous auto-generate)
+ *   2. Token cached on disk at <ZYK_DATA_DIR>/.token (from a previous auto-generate)
  *   3. Auto-generate: poll Hatchet until ready, login, create token, cache to disk
  */
 export async function ensureHatchetToken(): Promise<void> {
   if (process.env.HATCHET_CLIENT_TOKEN) return;
 
-  // Check disk cache first (survives container restarts via Railway volume)
+  // Check disk cache first (survives container restarts if ZYK_DATA_DIR is on a volume)
   if (existsSync(TOKEN_CACHE_PATH)) {
     const cached = readFileSync(TOKEN_CACHE_PATH, "utf-8").trim();
     if (cached) {
@@ -185,7 +186,7 @@ export async function ensureHatchetToken(): Promise<void> {
   const token = await generateToken(baseUrl);
 
   // Persist so future restarts skip this flow
-  mkdirSync(WORKFLOWS_DIR, { recursive: true });
+  mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(TOKEN_CACHE_PATH, token, { encoding: "utf-8", mode: 0o600 });
 
   process.env.HATCHET_CLIENT_TOKEN = token;

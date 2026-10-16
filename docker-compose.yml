@@ -57,34 +57,7 @@ services:
       HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
       HATCHET_HOST_PORT: hatchet-engine:7077
       HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
-      # Optional: pass user secrets for workflows
-      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-    volumes:
-      - ./mcp-server/workflows:/app/workflows
-    depends_on:
-      hatchet-engine:
-        condition: service_healthy
-
-  zyk-playground:
-    build:
-      context: ./playground
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
-      HATCHET_HOST_PORT: hatchet-engine:7077
-      HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
-      HATCHET_CLIENT_TLS_STRATEGY: none
-      ZYK_WEBHOOK_BASE: http://localhost:3000
-      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
-      OPENWEATHERMAP_API_KEY: ${OPENWEATHERMAP_API_KEY:-}
-      NEWSAPI_API_KEY: ${NEWSAPI_API_KEY:-}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ZYK_API_KEY: ${ZYK_API_KEY:-}
     depends_on:
       hatchet-engine:
         condition: service_healthy
