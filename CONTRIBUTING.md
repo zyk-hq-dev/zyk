@@ -25,6 +25,8 @@ cd mcp-server && npm install
 docker compose up -d postgres hatchet-engine
 ```
 
+Postgres is published on host port **5433** (override with `POSTGRES_PORT`).
+
 Wait ~15 seconds for Hatchet to initialise, then open http://localhost:8888 to confirm it's running.
 
 ### 3. Configure env
@@ -42,7 +44,17 @@ Leave `HATCHET_CLIENT_TOKEN` empty to auto-generate one on first start, or creat
 cd mcp-server && npm run dev
 ```
 
-The MCP endpoint is http://localhost:3100/mcp (health check: `/healthz`).
+The server creates and migrates the `zyk` database on start. The MCP endpoint is
+http://localhost:3100/mcp (health check: `/healthz`).
+
+## Tests
+
+```bash
+cd mcp-server
+npm test
+```
+
+Tests need the Compose Postgres and drop/recreate the `zyk_test` database on every run.
 
 ## Typecheck and build
 
@@ -65,6 +77,7 @@ npm run build       # compile TypeScript to dist/
 | Service | URL |
 |---------|-----|
 | zyk MCP endpoint | http://localhost:3100/mcp |
+| Postgres | localhost:5433 |
 | Hatchet UI | http://localhost:8888 |
 | Hatchet REST API | http://localhost:8080 |
 | Hatchet gRPC | localhost:7077 |

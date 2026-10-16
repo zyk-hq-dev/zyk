@@ -116,8 +116,15 @@ End-to-end tests run against real Hatchet with durations shortened via extension
 
 ## 5. Data model (zyk DB)
 
-Separate database on the same Postgres server as Hatchet. Every table carries `tenant_id`
-from day one.
+Separate database (`zyk`) on the same Postgres server as Hatchet, created automatically if
+missing. Schema lives in plain numbered SQL migrations (`mcp-server/migrations/`), applied on
+server start under an advisory lock (safe with several replicas). Every tenant-owned table
+carries `tenant_id` from day one; `playbook_versions` is a global catalog.
+
+Invariants enforced in the schema, not just in code: a task has a lock token and expiry
+exactly while `locked`; `(instance_id, step_key, iteration)` is unique (replay idempotency);
+`decided_via` only on user tasks; instances have `ended_at` exactly when not running;
+`external_key` is unique per tenant and playbook; `audit_log` rejects UPDATE/DELETE via trigger.
 
 - `tenants`, `api_keys` (hashed)
 - `playbook_versions` — `playbook_id`, `version`, `manifest` jsonb, content hash
@@ -264,6 +271,8 @@ docs/                   v2-architecture.md, assistant/
 | 2026-10-16 | Approvals: scheduled runs never complete user tasks; `decided_via` recorded; elicitation when supported. |
 | 2026-10-16 | Default trigger for incident mails: scheduled run polls inbox; webhook documented. |
 | 2026-10-16 | "Pack" renamed to **playbook**. |
+| 2026-10-16 | zyk DB: separate `zyk` database, plain SQL migrations run on start, schema-level invariants; tests use real Postgres (`zyk_test`, recreated per run) with vitest. |
+| 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
 
 ## 13. Open items
 

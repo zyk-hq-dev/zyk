@@ -1,9 +1,9 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
     restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"   # zyk server and tests on the host connect here
     environment:
       POSTGRES_USER: hatchet
       POSTGRES_PASSWORD: hatchet
@@ -57,6 +57,7 @@ services:
       HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
       HATCHET_HOST_PORT: hatchet-engine:7077
       HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
+      ZYK_DATABASE_URL: postgresql://hatchet:hatchet@postgres:5432/zyk
       ZYK_API_KEY: ${ZYK_API_KEY:-}
     depends_on:
       hatchet-engine:

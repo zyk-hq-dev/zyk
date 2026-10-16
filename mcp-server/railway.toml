@@ -63,6 +63,8 @@ restartPolicyMaxRetries = 10
 # HATCHET_CLIENT_HOST_PORT    = hatchet-engine.railway.internal:7077
 # HATCHET_REST_URL            = http://hatchet-engine.railway.internal:8080
 # HATCHET_CLIENT_TLS_STRATEGY = none  (set in Dockerfile; override here if needed)
+# ZYK_DATABASE_URL            = ${{Postgres.DATABASE_URL}} with the database name replaced by /zyk
+#                               (created automatically on first start)
 # ZYK_DATA_DIR                = /data (only if a volume is mounted there)
 # ZYK_API_KEY                 = <random secret — openssl rand -hex 32>
 #                               Temporary single key; replaced by per-tenant keys.

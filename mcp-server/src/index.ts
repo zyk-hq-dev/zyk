@@ -1,27 +1,13 @@
 #!/usr/bin/env node
 
-// Load .env from the repo root for local development.
-// In Docker/Railway env vars come from the container environment — this is a no-op there.
-import { existsSync, readFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-{
-  const envPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../.env");
-  if (existsSync(envPath)) {
-    for (const line of readFileSync(envPath, "utf-8").split("\n")) {
-      const m = line.match(/^\s*([\w]+)\s*=\s*(.*)\s*$/);
-      if (m && !process.env[m[1]]) {
-        process.env[m[1]] = m[2].replace(/^["'](.*)["']$/, "$1");
-      }
-    }
-  }
-}
-
+import "./env.js";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { timingSafeEqual } from "crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ensureHatchetToken } from "./hatchet/bootstrap.js";
+import { databaseUrl, ensureDatabase, getPool } from "./db/pool.js";
+import { migrate } from "./db/migrate.js";
 
 // ── MCP server factory ────────────────────────────────────────────────────────
 // Stateless: each POST gets its own server + transport (SDK allows one connect per server).
@@ -101,6 +87,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
 
 async function main() {
   const port = parseInt(process.env.PORT ?? "3100", 10);
+
+  // Fail fast if the zyk DB is unreachable — every tool depends on it.
+  await ensureDatabase(databaseUrl());
+  const applied = await migrate(getPool());
+  if (applied.length) console.error(`[db] applied migrations: ${applied.join(", ")}`);
 
   createServer((req, res) => {
     handleRequest(req, res).catch((err) => {

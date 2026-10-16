@@ -4,24 +4,30 @@
   "description": "zyk — durable process layer for AI assistants (MCP task API on Hatchet)",
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "migrations"
   ],
   "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "db:migrate": "tsx src/db/cli.ts migrate"
   },
   "dependencies": {
     "@hatchet-dev/typescript-sdk": "^1.17.2",
     "@modelcontextprotocol/sdk": "^1.26.0",
+    "pg": "^8.23.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^5.0.5"
   },
   "engines": {
     "node": ">=20"

@@ -10,6 +10,7 @@ RUN npm install
 COPY tsconfig.json ./
 COPY src/ ./src/
 RUN npm run build
+COPY migrations/ ./migrations/
 
 # Prune dev dependencies after build
 RUN npm prune --omit=dev
