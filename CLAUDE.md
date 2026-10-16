@@ -25,7 +25,7 @@ execution of user-supplied code.
 ## Status
 
 Milestone 1 is in progress; see the commit plan in `docs/v2-architecture.md` §11.
-Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine), step 6 (MCP tools, instructions, /zyk-work, API keys), step 7 (webhook trigger), step 8 (acceptance suite with simulated assistants).
+Done: step 0 (tag/branches/architecture doc), step 1 (v1 removal), step 2 (DB + migrations), step 3 (task store, reaper, audit log), step 4 (playbook format + incident-triage manifest), step 5 (Hatchet engine), step 6 (MCP tools, instructions, /zyk-work, API keys), step 7 (webhook trigger), step 8 (acceptance suite with simulated assistants), step 9 (assistant docs in `docs/assistant/`, Railway deployment in `docs/deploy-railway.md`, Hatchet pinned). Remaining: the manual acceptance test with real Claude.
 
 ## Stack
 
@@ -95,3 +95,5 @@ node scripts/generate-token.js                 # Hatchet API token for .env
 - Postgres: localhost:5433 (host port; 5432 inside Compose). DBs: `hatchet`, `zyk`, `zyk_test`
 - zyk MCP endpoint: http://localhost:3100/mcp (health: `/healthz`)
 - Hatchet REST API: http://localhost:8080 · Web UI: http://localhost:8888 · gRPC: localhost:7077
+- Hatchet image is pinned (`hatchet-lite:v0.107.2`); `/config` is a volume (token-signing keys).
+  Bump the image only together with `docs/deploy-railway.md` after `npm run test:e2e`.

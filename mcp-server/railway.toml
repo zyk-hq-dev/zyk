@@ -1,48 +1,21 @@
-# Zyk MCP Server — Railway service configuration
+# zyk — Railway service configuration for the zyk-mcp service (root directory: mcp-server/)
 #
-# ── How to deploy on Railway ─────────────────────────────────────────────────
+# Full setup (Postgres, hatchet-engine, zyk-mcp, variables, keys, security checklist):
+#   docs/deploy-railway.md
 #
-# Create 3 services in a Railway project:
-#
-#   1. Postgres          <- Add the Railway Postgres database plugin (one click)
-#
-#   2. hatchet-engine    <- "Deploy from Docker image"
-#      Image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
-#      Exposed port: 8080 (HTTP / REST API + UI)
-#      TCP port: 7077 (gRPC — enable via Railway TCP proxy)
-#      Environment variables:
-#        DATABASE_URL                  = ${{Postgres.DATABASE_URL}}
-#        SERVER_AUTH_COOKIE_SECRETS    = "$(openssl rand -hex 32) $(openssl rand -hex 32)"
-#        SERVER_AUTH_COOKIE_DOMAIN     = <hatchet-engine.up.railway.app domain>
-#        SERVER_GRPC_BIND_ADDRESS      = 0.0.0.0
-#        SERVER_GRPC_PORT              = 7077
-#        SERVER_GRPC_BROADCAST_ADDRESS = hatchet-engine.railway.internal:7077
-#        SERVER_GRPC_INSECURE          = t
-#        SERVER_AUTH_SET_EMAIL_VERIFIED = t
-#        SERVER_AUTH_COOKIE_INSECURE   = t
-#
-#   3. zyk-mcp           <- This service (source: mcp-server/ subdirectory)
-#      Environment variables: see [variables] section below
-#
-# ── Persistent volume (optional) ──────────────────────────────────────────────
-#
-#   zyk keeps no workflow files. A volume at ZYK_DATA_DIR only caches the
-#   auto-generated Hatchet token; without it a new token is generated on boot.
-#
-# ── Token generation — automatic on first boot ────────────────────────────────
-#
-#   If HATCHET_CLIENT_TOKEN is NOT set, zyk logs in to Hatchet with the default
-#   admin account, creates a token via the REST API, and caches it to
-#   ZYK_DATA_DIR/.token. Set HATCHET_REST_URL for this to work.
-#
-#   Do not expose the Hatchet UI publicly on a hosted deployment.
-#
-# ── Connecting an assistant ───────────────────────────────────────────────────
-#
-#   Remote MCP endpoint: https://<zyk-mcp>.up.railway.app/mcp
-#   Setup guides: docs/assistant/ (milestone 1, step 9)
-#
-# ─────────────────────────────────────────────────────────────────────────────
+# Summary:
+#   - hatchet-engine: image ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.107.2 (pinned),
+#     volume at /config, ADMIN_EMAIL/ADMIN_PASSWORD set, NO public domain or TCP proxy.
+#   - zyk-mcp (this service): the only public domain. Variables:
+#       ZYK_DATABASE_URL         = postgresql://${{Postgres.PGUSER}}:${{Postgres.PGPASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/zyk
+#       HATCHET_HOST_PORT        = hatchet-engine.railway.internal:7077
+#       HATCHET_CLIENT_HOST_PORT = hatchet-engine.railway.internal:7077
+#       HATCHET_REST_URL         = http://hatchet-engine.railway.internal:8080
+#       HATCHET_ADMIN_EMAIL      = ${{hatchet-engine.ADMIN_EMAIL}}
+#       HATCHET_ADMIN_PASSWORD   = ${{hatchet-engine.ADMIN_PASSWORD}}
+#     (or HATCHET_CLIENT_TOKEN instead of the HATCHET_ADMIN_* pair)
+#   - API keys: `railway ssh --service zyk-mcp`, then `npm run admin -- tenant:create <name>`.
+#   - Do NOT commit real values here.
 
 [build]
 builder = "DOCKERFILE"
@@ -53,19 +26,3 @@ healthcheckPath = "/healthz"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-
-# ── Environment variables ─────────────────────────────────────────────────────
-# Set these in the Railway dashboard for the zyk-mcp service.
-# Do NOT commit real values here.
-#
-# HATCHET_CLIENT_TOKEN        = <token — OR omit to auto-generate on first boot>
-# HATCHET_HOST_PORT           = hatchet-engine.railway.internal:7077
-# HATCHET_CLIENT_HOST_PORT    = hatchet-engine.railway.internal:7077
-# HATCHET_REST_URL            = http://hatchet-engine.railway.internal:8080
-# HATCHET_CLIENT_TLS_STRATEGY = none  (set in Dockerfile; override here if needed)
-# ZYK_DATABASE_URL            = ${{Postgres.DATABASE_URL}} with the database name replaced by /zyk
-#                               (created automatically on first start)
-# ZYK_DATA_DIR                = /data (only if a volume is mounted there)
-#
-# API keys are per tenant and live in the database. Create one inside the zyk-mcp container
-# (e.g. `railway ssh --service zyk-mcp`): npm run admin -- tenant:create <name>

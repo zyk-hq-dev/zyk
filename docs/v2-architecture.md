@@ -267,7 +267,12 @@ External text only ever appears in `untrusted_content`.
   **Mail text never passes through Hatchet:** playbook code requests it with
   `untrustedInput: true`; the `zyk-step` run reads it from the zyk DB when it creates the task,
   so Hatchet run inputs only carry the flag (verified in the e2e test).
-- The Hatchet UI and admin login are not exposed publicly on the hosted deployment.
+- **Hatchet is internal** on the hosted deployment (`docs/deploy-railway.md`): no public domain
+  or TCP proxy, the Lite development login replaced via `ADMIN_EMAIL` / `ADMIN_PASSWORD` (zyk's
+  token bootstrap uses `HATCHET_ADMIN_EMAIL` / `HATCHET_ADMIN_PASSWORD`), `/config` on a volume
+  (it holds the token-signing keys), and run retention lowered to 168h on the tenant. The
+  default tenant ignores `SERVER_LIMITS_DEFAULT_TENANT_RETENTION_PERIOD`, so it is set once with
+  SQL (verified on v0.107.2).
 
 ## 9. Playbooks
 
@@ -388,7 +393,7 @@ markers. The fake world counts effects, so duplicates are detectable.
 | Killed worker → retry after lease expiry, no duplicate effect | acceptance 2: issue created then crash; reaper requeues; attempt 2 finds the marker; still 1 issue |
 | Stale completions rejected; invalid results get helpful errors | acceptance 2 (and unit/MCP tests) |
 | Every step and decision visible via `get_instance` | acceptance 1: steps, decisions with `decided_via`, full history |
-| Manual test with real Claude, real GitHub and Gmail | pending (step 9) |
+| Manual test with real Claude, real GitHub and Gmail | pending: checklist in `docs/assistant/claude-setup.md`, run by the user on a hosted or tunneled zyk |
 
 Lease expiry is simulated by moving `lock_expires_at` into the past; the reaper itself runs for
 real. A mutation check (simulated assistant ignoring the marker) makes acceptance 2 fail with
@@ -421,11 +426,19 @@ two issues, confirming the test detects duplicates.
 | 2026-10-16 | Webhook: `/webhooks/<playbook_id>`, tenant from a webhook-scoped key; keys are scoped (`mcp` / `webhook`). |
 | 2026-10-16 | Untrusted instance input is passed to steps by reference (never in Hatchet inputs) and purged from instances after retention. |
 | 2026-10-16 | Local Postgres published on host port 5433 to avoid clashes with other local Postgres instances. |
+| 2026-10-16 | Hatchet pinned to `hatchet-lite:v0.107.2` (fixes GHSA-phg3-3g28-wq9v; e2e suite passes on it). Upgrades are deliberate: bump Compose and Railway together after `npm run test:e2e`. |
+| 2026-10-16 | Hatchet `/config` on a volume: it holds the generated JWT keysets, so recreating the container otherwise invalidates every API token. |
+| 2026-10-16 | Hosted: Hatchet has no public endpoint; admin login configurable; Hatchet retention 168h. |
+| 2026-10-16 | Default mail intake is the hourly scheduled run (Claude scheduled task or Claude Code routine, minimum interval 1h); the webhook is optional. The repository and inbox live in the user's project instructions until they become extension points. |
 
 ## 13. Open items
 
-- Verify current Claude custom-connector auth options (header vs URL key vs OAuth).
-- Pin the Hatchet image instead of `hatchet-lite:latest` (local engine is v0.90.4; the engine
-  logs advisory GHSA-phg3-3g28-wq9v recommending ≥ v0.91.2). Decide in step 9.
+- Manual acceptance test with real Claude, GitHub, and Gmail (checklist in
+  `docs/assistant/claude-setup.md`).
+- Make the GitHub repository and the incident mail search playbook extension points (today they
+  are in the user's project instructions).
+- OAuth for the connector (removes keys from URLs) behind the existing `authenticate` step.
+- The TypeScript SDK is 1.17.2 while the engine is v0.107.2; works per the e2e suite, upgrade
+  the SDK separately.
 - The Hatchet worker runs inside the zyk server process. Splitting it out is possible later
   (same code, separate entry point) if load requires it.

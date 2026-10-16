@@ -1,48 +1,38 @@
 # Security
 
-## Before deploying Zyk anywhere reachable from the public internet
+## Security model (v2)
 
-**Rotate all credentials before deploying beyond localhost/private networks or sharing any URLs.**
+- **No third-party credentials.** zyk never holds GitHub, mail, or other tokens. The user's
+  assistant does the work with its own connectors; zyk only stores process state and results.
+- **No code execution.** Playbooks are reviewed code in this repository. Customizations are
+  typed data; zyk never generates or runs user-supplied code.
+- **API keys per tenant** (`zyk_` + 256 random bits), stored as SHA-256 hashes and shown once.
+  Keys are scoped: `mcp` keys work the task API, `webhook` keys can only start workflows.
+  Keys can be sent as `Authorization: Bearer <key>` or in the URL path. The path form can show
+  up in proxy and platform logs (e.g. Railway's HTTP logs), so prefer the header where the
+  client supports it, and revoke unused keys (`npm run admin -- key:revoke <prefix>`).
+- **Approvals.** Every irreversible external action (sending mail) needs an approved user task
+  directly before it. This is checked when the manifest loads and again at runtime. Scheduled
+  runs are instructed never to complete user tasks.
+- **Untrusted content.** External text (mail bodies, issue comments) only reaches the assistant
+  as `untrusted_content`, marked as data. It never appears in task instructions, never passes
+  through Hatchet, and is purged after `ZYK_UNTRUSTED_RETENTION_DAYS` (default 14).
+- **Hatchet** is internal. On hosted deployments it has no public domain, the default admin
+  login is replaced, and run retention is limited. See the checklist in
+  [docs/deploy-railway.md](docs/deploy-railway.md).
 
-| Credential | Where to rotate |
-|---|---|
-| `SLACK_BOT_TOKEN` | Slack app settings → OAuth & Permissions → Regenerate |
-| `SLACK_SIGNING_SECRET` | Slack app settings → Basic Information → Regenerate |
-| `GITHUB_TOKEN` | GitHub → Settings → Developer settings → Personal access tokens |
-| `HATCHET_CLIENT_TOKEN` | Run `node scripts/generate-token.js` |
+Details: [docs/v2-architecture.md](docs/v2-architecture.md) §8.
 
-After rotating, update the token in:
-1. `.env` (local development)
-2. `.mcp.json` (Claude Code)
-3. Claude config (`claude_desktop_config.json`)
+## Local development
 
-**Check git history for accidentally committed secrets:**
-
-```bash
-git log --all --full-history -- .env
-git log --all --full-history -- "**/.env"
-git log --all --full-history -- .mcp.json
-```
-
-The `.env` and `.mcp.json` files are in `.gitignore`, but it's worth verifying they were never committed. If they were, consider using [git-filter-repo](https://github.com/newren/git-filter-repo) to purge them from history.
-
-## Workflow code execution
-
-Zyk runs user-generated TypeScript workflow code as a Node.js subprocess. **Do not run workflow code from untrusted sources.** The generated code:
-
-- Runs with the same OS permissions as the MCP server process
-- Has access to all environment variables in the server's process environment
-- Can make arbitrary network requests
-
-In the current single-user, self-hosted model this is acceptable — you control what Claude generates. A multi-tenant cloud deployment would require sandboxing (e.g., separate containers or a restricted runtime per workflow).
-
-## Webhook endpoint
-
-The Slack interactions endpoint (`POST /slack/interactions`) verifies the `X-Slack-Signature` header using the `SLACK_SIGNING_SECRET` environment variable. If `SLACK_SIGNING_SECRET` is not set, signature verification is skipped with a warning — **always set this in production**.
+The Compose setup uses Hatchet Lite's development defaults (`admin@example.com` /
+`Admin123!!`, insecure cookies, UI on `localhost:8888`). Don't expose it beyond your machine.
+`.env` is in `.gitignore` and holds your local Hatchet token. Never commit it.
 
 ## Responsible disclosure
 
-If you discover a security vulnerability in Zyk, please report it privately before opening a public issue. You can reach the maintainers at:
+If you discover a security vulnerability in zyk, please report it privately before opening a
+public issue:
 
 - GitHub: open a [private security advisory](https://github.com/zyk-hq/zyk/security/advisories/new)
 

@@ -21,8 +21,19 @@ approvals on Hatchet; the user's assistant pulls and executes tasks over MCP. Se
 - `examples/`, `PROMPTS.md`, `ARCHITECTURE.md`
 - `esbuild` dependency (`tsx` is now dev-only)
 
+### Added
+
+- Assistant setup docs (`docs/assistant/`): Claude connector, project instructions, hourly
+  scheduled run, mail webhook, other MCP clients, manual acceptance checklist
+- Railway deployment guide (`docs/deploy-railway.md`) with Hatchet kept private
+- `HATCHET_ADMIN_EMAIL` / `HATCHET_ADMIN_PASSWORD` for the Hatchet token bootstrap
+
 ### Changed
 
+- Hatchet pinned to `hatchet-lite:v0.107.2` (was `latest`, locally v0.90.4); its `/config` is a
+  volume so tokens survive container recreation
+- `npm run test:e2e` reads `HATCHET_CLIENT_TOKEN` from the repo-root `.env`
+- README and SECURITY rewritten for v2
 - Health check moved to `GET /healthz`
 - Hatchet token cache moved to `ZYK_DATA_DIR` (default `./data`)
 

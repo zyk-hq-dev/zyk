@@ -17,7 +17,7 @@ services:
       retries: 5
 
   hatchet-engine:
-    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:latest
+    image: ghcr.io/hatchet-dev/hatchet/hatchet-lite:v0.107.2   # pinned; bump deliberately (see docs/deploy-railway.md)
     restart: unless-stopped
     ports:
       - "8080:8080"   # Hatchet REST API
@@ -36,6 +36,10 @@ services:
       SERVER_GRPC_INSECURE: "t"
       SERVER_AUTH_SET_EMAIL_VERIFIED: "t"
       SERVER_AUTH_COOKIE_INSECURE: "t"
+    volumes:
+      # Generated config incl. the JWT/encryption keysets. Without it every container
+      # recreation creates new keys and invalidates all Hatchet API tokens.
+      - hatchet_config:/config
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,3 +68,4 @@ services:
 
 volumes:
   postgres_data:
+  hatchet_config:

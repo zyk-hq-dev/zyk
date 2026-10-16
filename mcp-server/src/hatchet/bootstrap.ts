@@ -8,6 +8,9 @@
  *   HATCHET_REST_URL       Full base URL for the Hatchet HTTP API.
  *                          Default: derived from HATCHET_HOST_PORT (replacing port 7077 → 8080),
  *                          or http://localhost:8080 if neither is set.
+ *   HATCHET_ADMIN_EMAIL    Hatchet admin login used to create the token; must match the engine's
+ *   HATCHET_ADMIN_PASSWORD ADMIN_EMAIL / ADMIN_PASSWORD. The defaults are Hatchet Lite's local-dev
+ *                          seed; hosted deployments must set their own.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
@@ -93,7 +96,10 @@ async function generateToken(baseUrl: string): Promise<string> {
   // 1. Login
   const loginRes = await hatchetRequest(baseUrl, "/api/v1/users/login", {
     method: "POST",
-    body: { email: "admin@example.com", password: "Admin123!!" },
+    body: {
+      email: process.env.HATCHET_ADMIN_EMAIL || "admin@example.com",
+      password: process.env.HATCHET_ADMIN_PASSWORD || "Admin123!!",
+    },
   });
   if (loginRes.status !== 200) {
     throw new Error(

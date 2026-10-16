@@ -1,7 +1,9 @@
 import { defineConfig } from "vitest/config";
+// Same .env as the dev server (HATCHET_CLIENT_TOKEN); variables already set win.
+import "./src/env.js";
 
 // End-to-end tests against a real Hatchet engine. Needs `docker compose up -d postgres
-// hatchet-engine` and HATCHET_CLIENT_TOKEN in the environment. Durations are scaled down and
+// hatchet-engine` and HATCHET_CLIENT_TOKEN (environment or repo-root .env). Durations are scaled down and
 // workflows are namespaced so a running dev server on the same Hatchet tenant is not affected.
 export default defineConfig({
   test: {
