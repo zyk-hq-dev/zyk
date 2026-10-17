@@ -287,7 +287,9 @@ steps:
       Use the text given in the input as `text`, adapting only greetings and line breaks. If
       the input contains `revision_notes`, apply them.
 
-      Do not send the draft. Return the draft's id and the exact text of the draft.
+      Do not send the draft. Return the draft's id and the exact text of the message you wrote
+      (only the new message, without the quoted earlier mails). Write the plain issue URL in
+      the text; Gmail may wrap links in redirects (google.com/url?q=...), which is expected.
     result_schema:
       type: object
       required: [draft_id, text]
@@ -337,6 +339,10 @@ steps:
     allowed_tools: [gmail.send_draft, gmail.search]
     instructions: |-
       Send the approved draft (input `draft_id`) exactly as approved. Do not change it.
+      Before sending, compare only the new message with the approved text (input `text`).
+      Ignore the quoted earlier mails Gmail appends to replies, and ignore link wrappers
+      (google.com/url?q=...) around the same URL. If the wording itself differs, do not send:
+      release the task and tell the user what differs.
 
       Idempotency: if the draft no longer exists, search the sent folder for a reply in the
       thread containing the approved text; if one was sent, return its Message-ID instead of
@@ -456,7 +462,9 @@ steps:
       Use the text given in the input as `text`, adapting only greetings and line breaks. If
       the input contains `revision_notes`, apply them.
 
-      Do not send the draft. Return the draft's id and the exact text of the draft.
+      Do not send the draft. Return the draft's id and the exact text of the message you wrote
+      (only the new message, without the quoted earlier mails). Write the plain issue URL in
+      the text; Gmail may wrap links in redirects (google.com/url?q=...), which is expected.
     result_schema:
       type: object
       required: [draft_id, text]
@@ -506,6 +514,10 @@ steps:
     allowed_tools: [gmail.send_draft, gmail.search]
     instructions: |-
       Send the approved draft (input `draft_id`) exactly as approved. Do not change it.
+      Before sending, compare only the new message with the approved text (input `text`).
+      Ignore the quoted earlier mails Gmail appends to replies, and ignore link wrappers
+      (google.com/url?q=...) around the same URL. If the wording itself differs, do not send:
+      release the task and tell the user what differs.
 
       Idempotency: if the draft no longer exists, search the sent folder for a reply in the
       thread containing the approved text; if one was sent, return its Message-ID instead of

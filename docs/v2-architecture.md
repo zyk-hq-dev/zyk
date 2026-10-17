@@ -430,6 +430,7 @@ two issues, confirming the test detects duplicates.
 | 2026-10-16 | Hatchet `/config` on a volume: it holds the generated JWT keysets, so recreating the container otherwise invalidates every API token. |
 | 2026-10-16 | Hosted: Hatchet has no public endpoint; admin login configurable; Hatchet retention 168h. |
 | 2026-10-16 | Default mail intake is the hourly scheduled run (Claude scheduled task or Claude Code routine, minimum interval 1h); the webhook is optional. The repository and inbox live in the user's project instructions until they become extension points. |
+| 2026-10-17 | Real-Claude run: draft verification before send compares only the new message text (ignores Gmail quoted history and link wrappers); wording differences still block the send. GitHub MCP form mode is a setup caveat, documented in `claude-setup.md`, not a zyk change. |
 
 ## 13. Open items
 

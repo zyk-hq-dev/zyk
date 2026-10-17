@@ -80,3 +80,16 @@ Record anything unexpected with the instance id; `get_instance` has the history.
 Claude connects from Anthropic's servers, so `localhost` does not work. Expose the local server
 over HTTPS, e.g. `cloudflared tunnel --url http://localhost:3100`, and use the tunnel URL in
 step 1. Stop the tunnel when you're done. Anyone with the URL and a key can reach your zyk.
+
+## Known issues from the first real-Claude run (2026-10-17)
+
+- **GitHub connector.** claude.ai's "GitHub Integration" only reads repository files; it has no
+  issue tools. Add GitHub's MCP server as a custom connector with a fine-grained token limited
+  to the test repository (Issues: read and write). The official server's issue-creation tool can
+  answer with an interactive form that claude.ai does not render. Claude then stops and releases
+  the task, which is safe, but the issue has to be created by hand (use the marker Claude shows)
+  or in a client that renders the form. Unattended scheduled runs cannot click Submit, so use a
+  GitHub connector that creates issues directly before relying on the hourly run.
+- **Mail drafts.** Gmail rewrites links in reply drafts (`google.com/url?q=...`) and appends the
+  quoted earlier mails. The playbook tells Claude to compare only the new message text and to
+  ignore both; a wording difference still stops the send.
