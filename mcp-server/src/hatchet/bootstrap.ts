@@ -92,14 +92,44 @@ async function waitForHatchet(baseUrl: string, maxAttempts = 36): Promise<void> 
 
 // ── Token generation ──────────────────────────────────────────────────────────
 
+// Hatchet Lite's published local-dev seed login. Only ever used against a local Hatchet.
+const LOCAL_DEV_EMAIL = "admin@example.com";
+const LOCAL_DEV_PASSWORD = "Admin123!!";
+
+function isLocalUrl(baseUrl: string): boolean {
+  const host = new URL(baseUrl).hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+}
+
+/**
+ * Admin login for token generation. The local-dev defaults apply only when Hatchet is on this
+ * machine; anywhere else the credentials must be configured, so a hosted deployment never tries
+ * a well-known password.
+ */
+export function resolveAdminCredentials(
+  baseUrl: string,
+  env: NodeJS.ProcessEnv = process.env
+): { email: string; password: string } {
+  const email = env.HATCHET_ADMIN_EMAIL || undefined;
+  const password = env.HATCHET_ADMIN_PASSWORD || undefined;
+  if (isLocalUrl(baseUrl)) {
+    return { email: email ?? LOCAL_DEV_EMAIL, password: password ?? LOCAL_DEV_PASSWORD };
+  }
+  if (!email || !password) {
+    throw new Error(
+      `HATCHET_ADMIN_EMAIL and HATCHET_ADMIN_PASSWORD must be set to generate a Hatchet token ` +
+      `against ${baseUrl}. The local-dev defaults only work for localhost. Set both (the admin ` +
+      `login of your Hatchet), or set HATCHET_CLIENT_TOKEN directly. See docs/deploy-railway.md.`
+    );
+  }
+  return { email, password };
+}
+
 async function generateToken(baseUrl: string): Promise<string> {
   // 1. Login
   const loginRes = await hatchetRequest(baseUrl, "/api/v1/users/login", {
     method: "POST",
-    body: {
-      email: process.env.HATCHET_ADMIN_EMAIL || "admin@example.com",
-      password: process.env.HATCHET_ADMIN_PASSWORD || "Admin123!!",
-    },
+    body: resolveAdminCredentials(baseUrl),
   });
   if (loginRes.status !== 200) {
     throw new Error(

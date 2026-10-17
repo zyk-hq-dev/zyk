@@ -61,6 +61,9 @@ services:
       HATCHET_CLIENT_TOKEN: ${HATCHET_CLIENT_TOKEN}
       HATCHET_HOST_PORT: hatchet-engine:7077
       HATCHET_CLIENT_HOST_PORT: hatchet-engine:7077
+      # Local-dev seed login of Hatchet Lite. The defaults only apply to localhost, so state it here.
+      HATCHET_ADMIN_EMAIL: ${HATCHET_ADMIN_EMAIL:-admin@example.com}
+      HATCHET_ADMIN_PASSWORD: ${HATCHET_ADMIN_PASSWORD:-Admin123!!}
       ZYK_DATABASE_URL: postgresql://hatchet:hatchet@postgres:5432/zyk
     depends_on:
       hatchet-engine:

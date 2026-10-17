@@ -1,7 +1,8 @@
 node_modules/
 dist/
 .mcp.json
-workflows/
+/workflows/
+/mcp-server/workflows/
 playground/.workflows/
 .env
 .env.local
@@ -14,3 +15,4 @@ mcp-server/zyk-env-debug.json
 mcp-server/runs.json
 mcp-server/workflows-api.json
 data/
+*.log
